@@ -33,7 +33,7 @@ export function SignupPage() {
       });
       const res = await authApi.login(form.email, form.password);
       await login(res.access_token, res.refresh_token, res.user);
-      navigate('/projects/new');
+      navigate('/');
     } catch {
       setError('가입에 실패했습니다. 이미 사용 중인 이메일인지 확인해 주세요.');
     } finally {

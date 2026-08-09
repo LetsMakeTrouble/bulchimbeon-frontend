@@ -21,7 +21,7 @@ export function LoginPage() {
     try {
       const res = await authApi.login(email, password);
       await login(res.access_token, res.refresh_token, res.user);
-      navigate('/chat');
+      navigate('/');
     } catch {
       // error.message 는 개발자용이다 — 사용자에게는 프론트 문안을 보여준다 (§1.5)
       setError('이메일 또는 비밀번호를 확인해 주세요.');

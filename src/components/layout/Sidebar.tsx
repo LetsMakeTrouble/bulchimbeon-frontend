@@ -85,7 +85,7 @@ export function Sidebar() {
           ))}
           <hr className="my-1.5 border-line" />
           <Link
-            to="/projects/new"
+            to="/"
             className="block rounded-md px-2.5 py-2 text-[13px] font-bold text-brand-deep hover:bg-surface-muted"
           >
             + 새 프로젝트 · 초대 코드로 참여

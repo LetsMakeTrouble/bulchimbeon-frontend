@@ -6,7 +6,7 @@ import { SseProvider } from './context/SseContext';
 import { Layout } from './components/layout/Layout';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
-import { ProjectsPage } from './pages/ProjectsPage';
+import { HomePage } from './pages/HomePage';
 import { ChatPage } from './pages/ChatPage';
 import { QuestionsListPage } from './pages/QuestionsListPage';
 import { DocumentsPage } from './pages/DocumentsPage';
@@ -48,7 +48,7 @@ export function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<Navigate to="/chat" replace />} />
+            <Route index element={<HomePage />} />
             <Route path="chat" element={<ChatPage />} />
             <Route path="questions" element={<QuestionsListPage />} />
             <Route path="documents" element={<DocumentsPage />} />
@@ -56,7 +56,6 @@ export function App() {
             <Route path="members" element={<MembersPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
-            <Route path="projects/new" element={<ProjectsPage />} />
           </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
