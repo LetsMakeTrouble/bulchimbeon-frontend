@@ -1,11 +1,5 @@
 # bulchimbeon-frontend
 
-> ⚠️ **`main` 에는 구현 코드가 없다.** 빌드 파이프라인과 `src/` 디렉터리 뼈대만 남겨둔
-> 상태다. 완성된 구현은 **`woojin` 브랜치**에 있다.
->
-> ```bash
-> git checkout woojin
-> ```
 
 ## 스택
 
@@ -21,8 +15,7 @@ npm run build    # tsc -b && vite build
 npm run lint     # oxlint
 ```
 
-`main` 상태에서는 `src/main.tsx` 가 없으므로 `dev`·`build` 가 돌지 않는다.
-구현을 채우거나 `woojin` 을 체크아웃한다.
+
 
 ## 디렉터리
 
