@@ -15,18 +15,8 @@ npm run build    # tsc -b && vite build — 타입체크 후 프로덕션 번들
 npm run lint     # oxlint
 ```
 
-테스트 러너는 없다. `domain/` 계층은 프레임워크 의존이 0이라 `node src/domain/**/selfCheck.ts`
-로 번들러 없이 바로 돈다 — 표현 계층까지 테스트가 필요해지면 그때 러너를 들인다.
-
-`main` 상태에서는 `src/main.tsx` 가 없으므로 `dev`·`build` 가 돌지 않는다.
-구현은 `woojin` 브랜치에 있다.
-
 ## 디렉터리
 
-계층은 SRP 기준 — "바뀌는 이유"가 다르면 계층이 다르다. 백엔드 DDD 를 그대로
-옮기지 않는다: 이 클라이언트는 영속성을 소유하지 않으므로 Aggregate Root ·
-Domain Event · ORM Entity 는 만들지 않는다. 서버가 애그리거트의 주인이고
-SSE 가 이미 이벤트 버스다.
 
 ```
 src/
