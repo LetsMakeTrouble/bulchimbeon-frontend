@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2, Plug, Upload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { documentsApi } from '../api/documents';
+import { useSseRefresh } from '../context/SseContext';
 import type { DocumentDetail, DocumentItem, DocumentVersion } from '../types';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -49,6 +50,9 @@ export function DocumentsPage() {
   }, [projectId]);
 
   useEffect(loadList, [loadList]);
+
+  // 이 이벤트가 오기 전까지 해당 버전은 검색 대상이 아니다 (§4).
+  useSseRefresh(['document.ingested', 'sync.completed', 'sync.failed'], loadList);
 
   const loadDetail = useCallback((id: string) => {
     setContent(null);

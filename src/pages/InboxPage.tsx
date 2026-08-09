@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowUpDown, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { reviewCardsApi } from '../api/reviewCards';
+import { useSseRefresh } from '../context/SseContext';
 import type { CardReason, Citation, ReviewCardDetail, ReviewCardListItem } from '../types';
 import { ReviewCard, type ResolveArgs } from '../components/inbox/ReviewCard';
 import { CitationViewerModal } from '../components/common/CitationViewerModal';
@@ -46,6 +47,9 @@ export function InboxPage() {
   }, [projectId]);
 
   useEffect(load, [load]);
+
+  // card.resolved 는 다른 기기에서 내가 처리한 경우다 — 큐를 다시 읽어 맞춘다.
+  useSseRefresh(['card.created', 'card.resolved', 'briefing.ready'], load);
 
   /**
    * ⚠️ 상세는 담당자가 카드를 실제로 연 순간에만, 정확히 1회 부른다.

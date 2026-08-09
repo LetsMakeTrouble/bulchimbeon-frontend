@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { notificationsApi } from '../api/notifications';
 import { useAuth } from '../context/AuthContext';
+import { useSseRefresh } from '../context/SseContext';
 import type { NotificationItem, NotificationType } from '../types';
 import { Badge, type Tone } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -47,6 +48,7 @@ export function NotificationsPage() {
   }, [unreadOnly]);
 
   useEffect(load, [load]);
+  useSseRefresh(['notification.created'], load);
 
   const markAll = async () => {
     const unread = items.filter((i) => i.read_at === null).map((i) => i.id);

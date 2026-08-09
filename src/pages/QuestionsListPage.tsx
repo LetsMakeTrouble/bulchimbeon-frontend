@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Loader2, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { questionsApi } from '../api/questions';
+import { useSseRefresh } from '../context/SseContext';
 import type { Citation, QuestionDetail, QuestionListItem, QuestionStatus } from '../types';
 import { Badge, QuestionStatusBadge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -48,6 +49,7 @@ export function QuestionsListPage() {
   }, [projectId, status]);
 
   useEffect(load, [load]);
+  useSseRefresh(['answer.completed', 'answer.updated'], load);
 
   useEffect(() => {
     if (!selectedId) return;

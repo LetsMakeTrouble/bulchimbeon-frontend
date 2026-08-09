@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { SseProvider } from './context/SseContext';
 import { Layout } from './components/layout/Layout';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
@@ -34,7 +35,8 @@ export function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
+        <SseProvider>
+          <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
 
@@ -57,8 +59,9 @@ export function App() {
             <Route path="projects/new" element={<ProjectsPage />} />
           </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </SseProvider>
       </AuthProvider>
     </BrowserRouter>
   );

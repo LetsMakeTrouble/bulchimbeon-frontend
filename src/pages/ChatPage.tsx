@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowUp, Loader2, Paperclip } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { questionsApi } from '../api/questions';
+import { useSse, useSseRefresh } from '../context/SseContext';
 import type { Citation, QuestionDetail, QuestionListItem } from '../types';
 
 /** QuestionDetail 에는 created_at 이 없다 — 시각은 목록 아이템에서 가져온다. */
@@ -11,11 +12,12 @@ import { CitationViewerModal } from '../components/common/CitationViewerModal';
 import { Avatar } from '../components/ui/Avatar';
 import { cn } from '../lib/cn';
 
-/** 파이프라인 예산 = LLM_PIPELINE_DEADLINE_SECONDS(기본 25초). 그 동안 2.5초 간격 폴링. */
+/** SSE 가 끊겼을 때만 쓰는 폴백 간격 (§6 "SSE 미사용 시 2~3초 폴링"). */
 const POLL_MS = 2500;
 
 export function ChatPage() {
   const { activeProject } = useAuth();
+  const { connected } = useSse();
   const projectId = activeProject?.id;
   const isAsker = activeProject?.role === 'asker';
 
@@ -47,12 +49,15 @@ export function ChatPage() {
     loadThread();
   }, [loadThread]);
 
-  // 파이프라인이 도는 동안만 폴링한다. SSE answer.completed 가 붙으면 이 블록을 대체한다 (§12).
+  useSseRefresh(['answer.completed', 'answer.updated'], loadThread);
+
+  // 폴백 폴링. 스트림이 살아 있으면 돌리지 않는다 — 같은 일을 두 번 하는 셈이다.
   useEffect(() => {
+    if (connected) return;
     if (!thread.some((t) => t.detail.status === 'processing')) return;
     const timer = setInterval(loadThread, POLL_MS);
     return () => clearInterval(timer);
-  }, [thread, loadThread]);
+  }, [connected, thread, loadThread]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
