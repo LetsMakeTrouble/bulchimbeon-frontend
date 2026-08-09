@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Citation, QuestionDetail } from '../../types';
-import { Badge, StateBadge } from '../ui/Badge';
+import { Badge } from '../ui/Badge';
 import { CitationBox } from '../inbox/CitationBox';
 import { formatTime } from '../../lib/format';
 import { cn } from '../../lib/cn';
@@ -66,9 +66,13 @@ export function AnswerBubble({
   if (!answer) return null;
 
   const isVerified = answer.state === 'verified';
+  // 담당자 확인 전인데 초록(즉답) 등급도 아직 draft 다 — Figma 는 "확인대기"만
+  // 카드 전체를 노랑으로 채우고, 즉답은 흰 배경에 왼쪽 강조선만 준다.
+  const isPending = answer.state === 'draft' && answer.grade === 'yellow';
   // D12 — expired·rejected·under_review 는 409 다. 버튼은 도메인 판단에서 파생시킨다.
   const canFeedback = canGiveFeedback(answer.state);
   const alreadyGave = answer.feedback_summary.my_feedback !== null;
+  const accent = isVerified ? 'ok' : answer.grade === 'yellow' ? 'warn' : 'ok';
 
   const submit = async (verdict: 'correct' | 'different') => {
     // "달랐다" 는 사유가 필수다(§6) — buildFeedback 이 빈 사유를 걸러 null 을 준다.
@@ -97,10 +101,20 @@ export function AnswerBubble({
   };
 
   return (
-    <Row>
+    <Row accent={accent}>
       <div className="w-full max-w-[640px]">
-        <div className="mb-1.5 flex items-center gap-2">
-          <StateBadge state={answer.state} />
+        <div className="mb-1 flex items-center gap-2">
+          <span
+            className={cn(
+              'flex h-5 items-center gap-1.5 rounded-full border px-2 text-[11px] font-bold',
+              isPending
+                ? 'border-warn-border bg-warn-surface text-warn'
+                : 'border-ok-border bg-ok-surface text-ok'
+            )}
+          >
+            {isPending && <span className="size-[5px] rounded-full bg-current" />}
+            {isVerified ? '✓ 확정됨' : isPending ? '확인대기' : '✓ AI 즉답'}
+          </span>
           {answer.source === 'reused' && <Badge tone="brand">재사용 확정 답변</Badge>}
           {answer.matching_rate !== null && (
             <span className="text-[11px] text-ink-muted">일치도 {answer.matching_rate}%</span>
@@ -109,27 +123,34 @@ export function AnswerBubble({
 
         <div
           className={cn(
-            'overflow-hidden rounded-xl border',
-            isVerified ? 'border-ok-border bg-surface' : 'border-warn-border bg-warn-surface/40'
+            'overflow-hidden rounded-bl-2xl rounded-br-2xl rounded-tl-md rounded-tr-2xl border shadow-[0_1px_3px_0_rgba(0,0,0,0.06)]',
+            isPending ? 'border-warn-border bg-warn-surface-subtle' : 'border-line bg-surface'
           )}
         >
           {/* disclaimer 도 서버 생성 문자열이다 — 프론트가 문안을 만들지 않는다 */}
           {answer.disclaimer && (
             <p
               className={cn(
-                'border-b px-4 py-2.5 text-[12px] font-bold',
-                isVerified
-                  ? 'border-ok-border bg-ok-surface/50 text-ok'
-                  : 'border-warn-border bg-warn-surface text-warn'
+                'border-b px-3.5 py-2 text-[12px] font-bold leading-[18px]',
+                isPending
+                  ? 'border-warn-border bg-warn-surface text-warn'
+                  : 'border-ok-border bg-ok-surface-subtle text-ok'
               )}
             >
               {answer.disclaimer}
             </p>
           )}
 
-          <p className="whitespace-pre-wrap px-4 py-3.5 text-[14px] leading-[22px] text-ink">
-            {answer.content_ko}
-          </p>
+          <div
+            className={cn(
+              !isPending && 'border-l-[3px]',
+              !isPending && (accent === 'warn' ? 'border-warn-border' : 'border-ok-border')
+            )}
+          >
+            <p className="whitespace-pre-wrap px-4 py-3.5 text-[14px] leading-[22px] text-ink">
+              {answer.content_ko}
+            </p>
+          </div>
 
           {answer.citations.length > 0 && (
             <div className="border-t border-line px-3 py-3">
@@ -190,10 +211,27 @@ export function AnswerBubble({
   );
 }
 
-function Row({ children }: { children: React.ReactNode }) {
+/** AI 아바타는 상태색을 그대로 반복한다 — 확인대기(노랑)와 즉답/확정(초록)을 색으로도 구분한다. */
+function Row({
+  children,
+  accent = 'neutral',
+}: {
+  children: React.ReactNode;
+  accent?: 'ok' | 'warn' | 'neutral';
+}) {
+  const toneClass = {
+    ok: 'bg-ok-surface text-ok',
+    warn: 'bg-warn-surface text-warn',
+    neutral: 'bg-surface-alt text-ink-muted',
+  }[accent];
   return (
     <div className="flex items-start gap-2.5">
-      <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-alt text-[10px] font-bold text-ink-muted">
+      <span
+        className={cn(
+          'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold',
+          toneClass
+        )}
+      >
         AI
       </span>
       {children}

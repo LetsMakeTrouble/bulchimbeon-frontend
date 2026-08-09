@@ -26,10 +26,12 @@
 
   --color-ok: #0e7a63;
   --color-ok-surface: #e1f9f3;
+  --color-ok-surface-subtle: #effcf9;
   --color-ok-border: #5ce1c4;
 
   --color-warn: #8a5d00;
   --color-warn-surface: #fff3d6;
+  --color-warn-surface-subtle: #fffaed;
   --color-warn-border: #ffc84b;
 
   --color-danger: #d01b39;

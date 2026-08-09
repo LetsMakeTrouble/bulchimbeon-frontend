@@ -84,7 +84,7 @@ export function ChatPage() {
   return (
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 items-center gap-3 border-b border-line bg-surface px-6 py-3.5">
-        <Avatar name={activeProject.name} size={36} />
+        <Avatar name={activeProject.name} size={40} />
         <div>
           <p className="text-[14px] font-bold text-ink">{activeProject.name}</p>
           <p className="text-[12px] text-ink-muted">
@@ -122,14 +122,15 @@ export function ChatPage() {
         <div className="shrink-0 border-t border-line bg-surface px-6 py-4">
           <div className="mx-auto max-w-[760px]">
             {urgent && (
-              <p className="mb-2 rounded-lg border border-danger-border bg-danger-surface px-3 py-2 text-[12px] font-bold text-danger">
+              <p className="mb-2 flex items-center gap-2 rounded-lg border border-danger-border-soft bg-danger-surface-subtle px-3 py-2 text-[12px] font-medium text-danger">
+                <span className="size-[7px] shrink-0 rounded-full bg-danger" />
                 급함 모드: 담당자에게 즉시 멘션됩니다
               </p>
             )}
             <div
               className={cn(
-                'overflow-hidden rounded-xl border bg-surface',
-                urgent ? 'border-danger-border' : 'border-line-strong'
+                'overflow-hidden rounded-xl border bg-surface shadow-[0_1px_2px_0_rgba(30,32,44,0.04)]',
+                urgent ? 'border-2 border-danger-border' : 'border-line-strong'
               )}
             >
               <textarea
@@ -147,10 +148,10 @@ export function ChatPage() {
                   type="button"
                   onClick={() => setUrgent((v) => !v)}
                   className={cn(
-                    'inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-bold transition-colors',
+                    'inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[12px] font-bold transition-colors',
                     urgent
-                      ? 'border-danger-border bg-danger-surface text-danger'
-                      : 'border-line bg-surface text-ink-muted'
+                      ? 'border-[1.5px] border-danger-border bg-danger-surface-subtle text-danger'
+                      : 'border-line-strong bg-surface-subtle text-ink'
                   )}
                 >
                   급함
@@ -180,7 +181,12 @@ export function ChatPage() {
                   onClick={send}
                   disabled={sending || !draft.trim()}
                   aria-label="보내기"
-                  className="ml-auto flex size-9 items-center justify-center rounded-lg bg-brand-strong text-white disabled:bg-brand-border"
+                  className={cn(
+                    'ml-auto flex size-11 items-center justify-center rounded-[10px] text-white transition-colors',
+                    urgent
+                      ? 'bg-danger disabled:bg-danger-border-soft'
+                      : 'bg-brand-strong disabled:bg-brand-border'
+                  )}
                 >
                   {sending ? (
                     <Loader2 className="size-4 animate-spin" />

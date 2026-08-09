@@ -1,10 +1,10 @@
 import { useRef } from 'react';
-import type { ReactNode } from 'react';
 import { Loader2, Plug, Upload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useDocumentLibrary } from '../application/document/useDocumentLibrary';
 import { canActivate, isStale, STALE_DAYS } from '../domain/document/documentPolicy';
 import { Button } from '../components/ui/Button';
+import { Tag } from '../components/ui/Tag';
 import { formatRelative } from '../lib/format';
 import { cn } from '../lib/cn';
 
@@ -19,35 +19,6 @@ const ingestLabel: Record<string, string> = {
   processing: '인제스트 중',
   failed: '인제스트 실패',
 };
-
-/**
- * 문서 화면 전용 사각 태그 — 리뷰카드·필터에 쓰는 pill 형 Badge 와는 다른
- * 별도 컴포넌트다(Figma "Tag" 는 rounded-5·h-18, Badge/Pill 은 rounded-full·h-19+).
- * 이 화면 밖에서 재사용되는 걸 확인 못해 로컬에 둔다.
- */
-function Tag({
-  tone = 'neutral',
-  children,
-}: {
-  tone?: 'neutral' | 'warn' | 'brand';
-  children: ReactNode;
-}) {
-  const toneClass = {
-    neutral: 'border-line bg-surface-subtle text-ink-muted',
-    warn: 'border-warn-border bg-warn-surface text-warn',
-    brand: 'border-brand-border bg-brand-surface text-brand-deep',
-  }[tone];
-  return (
-    <span
-      className={cn(
-        'inline-flex h-[18px] items-center whitespace-nowrap rounded-[5px] border px-1.5 text-[10px] font-bold',
-        toneClass
-      )}
-    >
-      {children}
-    </span>
-  );
-}
 
 export function DocumentsPage() {
   const { activeProject } = useAuth();

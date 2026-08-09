@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Loader2, Search } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { questionsApi } from '../infrastructure/http/questions';
 import { useSseRefresh } from '../context/SseContext';
@@ -20,6 +20,9 @@ const STATUS_FILTERS: { key: QuestionStatus | 'all'; label: string }[] = [
   { key: 'failed', label: '실패' },
 ];
 
+const chipClass =
+  'flex h-[30px] items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-[12px] font-bold transition-colors';
+
 export function QuestionsListPage() {
   const { activeProject } = useAuth();
   const projectId = activeProject?.id;
@@ -34,6 +37,9 @@ export function QuestionsListPage() {
   const [detail, setDetail] = useState<QuestionDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [citation, setCitation] = useState<Citation | null>(null);
+  // QuestionListItem 에 urgency 필드가 없어 "급함만"은 걸러낼 데이터 자체가
+  // 없다(비활성으로 둔다). feedback_summary 는 있으므로 피드백만 클라이언트로 거른다.
+  const [feedbackOnly, setFeedbackOnly] = useState(false);
 
   const load = useCallback(() => {
     if (!projectId) return;
@@ -65,8 +71,10 @@ export function QuestionsListPage() {
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     // ponytail: 현재 페이지 20건만 훑는 클라이언트 검색, 목록 API 에 q 파라미터가 생기면 서버로 이관
-    return q ? items.filter((i) => i.content_ko.toLowerCase().includes(q)) : items;
-  }, [items, query]);
+    let list = q ? items.filter((i) => i.content_ko.toLowerCase().includes(q)) : items;
+    if (feedbackOnly) list = list.filter((i) => (i.feedback_summary?.different ?? 0) > 0);
+    return list;
+  }, [items, query, feedbackOnly]);
 
   if (!activeProject) {
     return <p className="p-10 text-[13px] text-ink-muted">프로젝트를 먼저 선택하세요.</p>;
@@ -74,33 +82,56 @@ export function QuestionsListPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="shrink-0 border-b border-line bg-surface px-6 py-4">
+      <div className="shrink-0 border-b border-line bg-surface px-5 py-3.5">
         <label className="relative flex h-10 items-center">
-          <Search className="pointer-events-none absolute left-3.5 size-4 text-ink-subtle" />
+          <Search className="pointer-events-none absolute left-3 size-3 text-ink-muted" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="질문 내용 검색"
-            className="h-full w-full rounded-lg border border-line bg-surface-muted pl-10 pr-3 text-[13px] text-ink placeholder:text-ink-subtle focus:border-brand focus:bg-surface focus:outline-none"
+            className="h-full w-full rounded-lg border border-line-strong bg-surface pl-8 pr-3 text-[13px] text-ink placeholder:text-ink-muted focus:border-brand focus:outline-none"
           />
         </label>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="mt-2.5 flex flex-wrap items-center gap-2">
           {STATUS_FILTERS.map((f) => (
             <button
               key={f.key}
               onClick={() => setStatus(f.key)}
               className={cn(
-                'rounded-full border px-3 py-1.5 text-[12px] font-bold transition-colors',
+                chipClass,
                 status === f.key
                   ? 'border-brand-strong bg-brand-strong text-white'
-                  : 'border-line bg-surface text-ink-muted hover:bg-surface-muted'
+                  : 'border-line-strong bg-surface text-ink hover:bg-surface-muted'
               )}
             >
               {f.label}
             </button>
           ))}
-          <span className="ml-auto text-[12px] text-ink-muted">
+          <span
+            title="이 화면에서 급함 여부를 구분할 데이터가 아직 없습니다"
+            className={cn(chipClass, 'cursor-not-allowed border-line-strong bg-surface text-ink-subtle')}
+          >
+            급함만
+          </span>
+          <button
+            onClick={() => setFeedbackOnly((v) => !v)}
+            className={cn(
+              chipClass,
+              feedbackOnly
+                ? 'border-brand-strong bg-brand-strong text-white'
+                : 'border-line-strong bg-surface text-ink hover:bg-surface-muted'
+            )}
+          >
+            피드백
+          </button>
+          <span
+            title="기간 필터는 아직 없습니다"
+            className={cn(chipClass, 'cursor-not-allowed border-line-strong bg-surface text-ink-subtle')}
+          >
+            기간
+          </span>
+          <span className="ml-auto text-[11px] text-ink-muted">
             총 {total}건 중 {visible.length}건 표시
           </span>
         </div>
@@ -146,7 +177,31 @@ export function QuestionsListPage() {
         </div>
 
         {/* 상세 */}
-        <div className="min-h-0 overflow-y-auto bg-surface-subtle p-5">
+        <div className="flex min-h-0 flex-col bg-surface">
+          {detail && (
+            <div className="flex shrink-0 items-center gap-2 border-b border-line px-5 py-3.5 shadow-[0_1px_2px_0_rgba(30,32,44,0.04)]">
+              <QuestionStatusBadge
+                status={detail.status}
+                grade={detail.answer?.grade ?? null}
+                state={detail.answer?.state}
+              />
+              {detail.urgency === 'urgent' && (
+                <Badge tone="danger" dot>
+                  급함
+                </Badge>
+              )}
+              <span className="flex-1 truncate text-[11px] text-ink-muted">
+                {detail.asked_by.name} 생성
+              </span>
+              <Link to="/chat">
+                <Button variant="primary" size="sm">
+                  대화로 이동
+                </Button>
+              </Link>
+            </div>
+          )}
+
+          <div className="min-h-0 flex-1 overflow-y-auto bg-surface-subtle px-5 py-4.5">
           {detailLoading && (
             <p className="flex items-center gap-2 text-[13px] text-ink-muted">
               <Loader2 className="size-4 animate-spin" /> 불러오는 중…
@@ -159,25 +214,6 @@ export function QuestionsListPage() {
           )}
           {detail && (
             <div className="mx-auto flex max-w-[680px] flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <QuestionStatusBadge
-                  status={detail.status}
-                  grade={detail.answer?.grade ?? null}
-                  state={detail.answer?.state}
-                />
-                <span className="text-[12px] text-ink-muted">{detail.asked_by.name}</span>
-                {detail.urgency === 'urgent' && (
-                  <Badge tone="danger" dot>
-                    급함
-                  </Badge>
-                )}
-                <Link to="/chat" className="ml-auto">
-                  <Button variant="primary" size="sm">
-                    대화로 이동 <ArrowRight className="size-3.5" />
-                  </Button>
-                </Link>
-              </div>
-
               <Section title="질문 원문">
                 <p className="text-[13px] leading-[20px] text-ink">{detail.content_ko}</p>
               </Section>
@@ -235,6 +271,7 @@ export function QuestionsListPage() {
               )}
             </div>
           )}
+          </div>
         </div>
       </div>
 
