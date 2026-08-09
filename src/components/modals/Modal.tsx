@@ -31,24 +31,26 @@ export function Modal({
       aria-label={title}
     >
       <div
-        className="flex max-h-full w-full flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-xl"
+        className="flex max-h-full w-full flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_16px_48px_0_rgba(30,32,44,0.16)]"
         style={{ maxWidth: width }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start gap-3 border-b border-line px-5 py-4">
+        <div className="flex items-start gap-3 border-b border-line px-6 pb-3 pt-4">
           <div className="min-w-0 flex-1">
-            <h2 className="text-[15px] font-bold text-ink">{title}</h2>
-            {description && <p className="mt-1 text-[12px] text-ink-muted">{description}</p>}
+            <h2 className="text-[20px] font-bold leading-7 text-ink">{title}</h2>
+            {description && (
+              <p className="mt-1.5 text-[13px] leading-5 text-ink-muted">{description}</p>
+            )}
           </div>
           <button onClick={onClose} className="text-ink-subtle hover:text-ink" aria-label="닫기">
-            <X className="size-5" />
+            <X className="size-4" />
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">{children}</div>
 
         {footer && (
-          <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-4">
+          <div className="flex items-center justify-end gap-2 border-t border-line bg-surface-subtle px-6 py-3.5">
             {footer}
           </div>
         )}
