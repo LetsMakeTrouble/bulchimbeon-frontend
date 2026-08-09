@@ -64,20 +64,24 @@ export function QuestionStatusBadge({
 /**
  * §7 카드 reason 표기. Grade('green'|'yellow'|'red')는 CardReason 의 부분집합이라
  * 등급 뱃지도 이 표 하나로 그린다 — 같은 라벨을 두 표에 적어두면 반드시 갈라진다.
+ *
+ * Figma "질문 목록 (관리자)"·"브리핑 인박스" 실측 확인: danger(빨강)는 "급함"
+ * 긴급 플래그 전용이다. "보류" 자체는 purple, "피드백"은 info(파랑)다 —
+ * 색만 보고 급함으로 착각하면 안 된다는 게 이 배색의 의도로 보인다.
  */
-const reasonMeta: Record<CardReason, { label: string; tone: Tone }> = {
-  green: { label: '즉답', tone: 'ok' },
-  yellow: { label: '확인대기', tone: 'warn' },
-  red: { label: '보류', tone: 'danger' },
-  feedback: { label: '피드백', tone: 'purple' },
-  doc_update: { label: '문서 갱신', tone: 'info' },
-  failed: { label: '실패', tone: 'danger' },
+const reasonMeta: Record<CardReason, { label: string; tone: Tone; dot: boolean }> = {
+  green: { label: '즉답', tone: 'ok', dot: false },
+  yellow: { label: '확인대기', tone: 'warn', dot: true },
+  red: { label: '보류', tone: 'purple', dot: false },
+  feedback: { label: '피드백', tone: 'info', dot: false },
+  doc_update: { label: '문서 갱신', tone: 'info', dot: false },
+  failed: { label: '실패', tone: 'danger', dot: false },
 };
 
 export function ReasonBadge({ reason }: { reason: CardReason }) {
-  const { label, tone } = reasonMeta[reason];
+  const { label, tone, dot } = reasonMeta[reason];
   return (
-    <Badge tone={tone} dot={reason === 'yellow'}>
+    <Badge tone={tone} dot={dot}>
       {label}
     </Badge>
   );

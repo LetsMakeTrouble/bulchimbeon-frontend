@@ -26,6 +26,16 @@ const ACTION_UI: Record<CardAction, { label: string; variant: 'primary' | 'secon
 /** 선택지 응답은 질문 카드 안에서 옵션별 버튼으로 그리므로 하단 버튼 줄에서는 뺀다. */
 const inButtonRow = (a: CardAction) => a !== 'answer-option';
 
+/** 왼쪽 강조 띠 — Figma 는 카드 reason 색을 여기서도 반복해 한눈에 훑을 수 있게 한다. */
+const ACCENT: Record<ReviewCardListItem['reason'], string> = {
+  green: 'bg-ok-border',
+  yellow: 'bg-warn-border',
+  red: 'bg-purple-border',
+  feedback: 'bg-info-border',
+  doc_update: 'bg-info-border',
+  failed: 'bg-danger-border',
+};
+
 export function ReviewCard({
   index,
   item,
@@ -82,14 +92,16 @@ export function ReviewCard({
   return (
     <article
       className={cn(
-        'overflow-hidden rounded-xl border bg-surface transition-colors',
+        'relative overflow-hidden rounded-xl border bg-surface transition-colors',
         expanded ? 'border-brand-border shadow-[0_1px_3px_rgba(30,32,44,0.06)]' : 'border-line',
         resolved && 'opacity-55'
       )}
     >
+      <span className={cn('absolute inset-y-0 left-0 w-1', ACCENT[item.reason])} aria-hidden />
+
       {/* 헤더 */}
-      <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
-        <span className="text-[12px] font-bold text-ink-subtle">{index}</span>
+      <div className="flex items-center gap-2 border-b border-line px-4 py-3.5">
+        <span className="text-[12px] font-bold text-ink-muted">{index}</span>
         <ReasonBadge reason={item.reason} />
         {item.is_urgent && (
           <Badge tone="danger" dot>
@@ -110,7 +122,7 @@ export function ReviewCard({
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center gap-3 bg-surface-muted px-4 py-3 text-left hover:bg-surface-subtle"
+        className="flex w-full items-center gap-2.5 bg-surface-subtle px-4 py-3.5 text-left hover:bg-surface-muted"
         aria-expanded={expanded}
       >
         <span className="shrink-0 text-[11px] font-bold text-ink-muted">질문</span>
@@ -173,7 +185,7 @@ export function ReviewCard({
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     rows={5}
-                    className="w-full rounded-lg border border-brand bg-surface p-3 text-[13px] leading-[20px] text-ink focus:outline-none"
+                    className="w-full rounded-lg border border-brand bg-surface p-3 text-[14px] leading-[22px] text-ink focus:outline-none"
                   />
                   <div className="mt-2 flex items-center gap-2">
                     <p className="flex-1 text-[11px] text-ink-muted">
@@ -193,7 +205,7 @@ export function ReviewCard({
                   </div>
                 </>
               ) : (
-                <p className="text-[13px] leading-[20px] text-ink">
+                <p className="text-[14px] leading-[22px] text-ink">
                   {detail.draft_answer.content_en}
                 </p>
               )}
