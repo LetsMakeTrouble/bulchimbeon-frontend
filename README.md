@@ -20,24 +20,28 @@ npm run lint     # oxlint
 
 ```
 src/
-├── domain/              # 순수 업무 규칙 — React·axios 의존 0
-│   └── review/          #   §7.1 액션 매트릭스, 처리 명령 VO, 저장소 포트
-├── application/         # 유즈케이스 조율 — 업무 규칙 없음, 화면 문구 없음
-│   └── review/          #   useReviewQueue: 조회·지연로딩·처리·에러 매핑
+├── domain/                # 순수 업무 규칙 — React·axios 의존 0. 폴더마다 selfCheck.ts (node 로 직접 실행)
+│   ├── review/             #   §7.1 액션 매트릭스, 처리 명령 VO, 저장소 포트
+│   ├── document/           #   §4 버전 활성화 규칙, 저장소 포트
+│   ├── feedback/           #   §6 크로스체크 허용 상태, 피드백 VO
+│   └── errors.ts           #   도메인 예외
+├── application/           # 유즈케이스 조율 — 업무 규칙 없음, 화면 문구 없음
+│   ├── review/             #   useReviewQueue: 조회·지연로딩·처리·에러 매핑
+│   └── document/           #   useDocumentLibrary: 목록·버전 전환
 ├── infrastructure/
-│   └── http/            # axios 어댑터 — 도메인 포트 구현체, HTTP 에러 → 도메인 예외 번역
+│   └── http/               # axios 어댑터 — 도메인 포트 구현체, HTTP 에러 → 도메인 예외 번역
 ├── components/
-│   ├── auth/             # 로그인·가입 껍데기
-│   ├── chat/              # 질문자 대화 말풍선
-│   ├── common/           # 근거 원문 열람 등 화면 공용
-│   ├── inbox/             # 담당자 확인 카드 큐 (도메인에서 액션을 파생)
-│   ├── layout/            # Sidebar · TopBar · Layout
+│   ├── auth/                # 로그인·가입 껍데기
+│   ├── chat/                 # 질문자 대화 말풍선
+│   ├── common/               # 근거 원문 열람 등 화면 공용
+│   ├── inbox/                 # 담당자 확인 카드 큐 (도메인에서 액션을 파생)
+│   ├── layout/                # Sidebar · TopBar · Layout
 │   ├── modals/
-│   └── ui/                # Badge · Button · Avatar 프리미티브
-├── context/              # AuthContext · SseContext
-├── lib/                  # cn · 날짜 포맷 등 순수 헬퍼
-├── pages/                # 라우트 단위 화면 — 렌더링만
-└── types/                # API 계약과 1:1 대응하는 타입 (공유 커널)
+│   └── ui/                    # Badge · Button · Avatar · Tag 프리미티브
+├── context/                # AuthContext · SseContext
+├── lib/                    # cn · 날짜 포맷 등 순수 헬퍼
+├── pages/                  # 라우트 단위 화면 — 렌더링만. HomePage 가 진입점(index route)
+└── types/                  # API 계약과 1:1 대응하는 타입 (공유 커널)
 ```
 
 ## 디자인
