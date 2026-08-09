@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2, Plug, Upload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { documentsApi } from '../api/documents';
+import { documentsApi } from '../infrastructure/http/documents';
 import { useSseRefresh } from '../context/SseContext';
 import type { DocumentDetail, DocumentItem, DocumentVersion } from '../types';
 import { Badge } from '../components/ui/Badge';

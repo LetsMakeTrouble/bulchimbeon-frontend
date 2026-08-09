@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { projectsApi } from '../api/projects';
+import { projectsApi } from '../infrastructure/http/projects';
 import type { Integration, ProjectDetail, ProjectSettings } from '../types';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';

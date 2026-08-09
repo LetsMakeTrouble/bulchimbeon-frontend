@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Loader2, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { questionsApi } from '../api/questions';
+import { questionsApi } from '../infrastructure/http/questions';
 import { useSseRefresh } from '../context/SseContext';
 import type { Citation, QuestionDetail, QuestionListItem, QuestionStatus } from '../types';
 import { Badge, QuestionStatusBadge } from '../components/ui/Badge';
@@ -64,6 +64,7 @@ export function QuestionsListPage() {
   // 검색은 목록 엔드포인트에 query 파라미터가 없어 클라이언트에서 거른다.
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
+    // ponytail: 현재 페이지 20건만 훑는 클라이언트 검색, 목록 API 에 q 파라미터가 생기면 서버로 이관
     return q ? items.filter((i) => i.content_ko.toLowerCase().includes(q)) : items;
   }, [items, query]);
 

@@ -1,20 +1,30 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import type { Citation, ReviewCardDetail, ReviewCardListItem } from '../../types';
+import { allowedActions, allows, requiresReason, type CardAction } from '../../domain/review/cardPolicy';
+import { withReason, type Resolution } from '../../domain/review/resolution';
 import { Badge, ReasonBadge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { CitationBox } from './CitationBox';
-import { allows } from './CardActions';
 import { formatTime } from '../../lib/format';
 import { cn } from '../../lib/cn';
 
-export type ResolveKind = 'approve' | 'edit' | 'answer-option' | 'keep' | 'reject' | 'defer';
+/**
+ * 액션의 **표현**만 정의한다 — 문구와 강조도.
+ * "어떤 액션이 허용되는가"는 domain/review/cardPolicy 의 몫이고,
+ * 문구를 바꾸는 일이 업무 규칙 변경이 되어서는 안 된다.
+ */
+const ACTION_UI: Record<CardAction, { label: string; variant: 'primary' | 'secondary' | 'danger' | 'ghost' }> = {
+  approve: { label: '승인 (원안 유지)', variant: 'primary' },
+  edit: { label: '수정 후 저장', variant: 'secondary' },
+  'answer-option': { label: '선택지로 응답', variant: 'secondary' },
+  keep: { label: '원안 유지', variant: 'secondary' },
+  reject: { label: '반려', variant: 'danger' },
+  defer: { label: '나중에', variant: 'ghost' },
+};
 
-export interface ResolveArgs {
-  kind: ResolveKind;
-  content?: string;
-  index?: number;
-}
+/** 선택지 응답은 질문 카드 안에서 옵션별 버튼으로 그리므로 하단 버튼 줄에서는 뺀다. */
+const inButtonRow = (a: CardAction) => a !== 'answer-option';
 
 export function ReviewCard({
   index,
@@ -36,22 +46,37 @@ export function ReviewCard({
   resolved: boolean;
   busy: boolean;
   onToggle: () => void;
-  onResolve: (args: ResolveArgs) => void;
+  onResolve: (resolution: Resolution) => void;
   onOpenCitation: (c: Citation) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
 
-  const startEdit = () => {
-    setDraft(detail?.draft_answer?.content_en ?? '');
-    setEditing(true);
-  };
-
-  const askReason = (kind: 'reject' | 'keep') => {
-    const reason = window.prompt(
-      kind === 'reject' ? '반려 사유를 입력하세요 (질문자에게 전달됩니다)' : '원안을 유지하는 사유를 입력하세요'
-    );
-    if (reason?.trim()) onResolve({ kind, content: reason.trim() });
+  /**
+   * 액션 하나를 눌렀을 때 무엇이 필요한지 결정한다.
+   * - edit  : 본문이 필요하니 인라인 편집기를 연다 (아직 명령을 만들지 않는다)
+   * - keep/reject : 사유가 필요하다. 무엇으로 입력받을지는 표현 계층 자유다.
+   *
+   * ponytail: 사유 입력이 window.prompt 다. 서식 있는 사유나 취소 UX 가 필요해지면 모달로.
+   */
+  const handle = (action: CardAction) => {
+    if (action === 'edit') {
+      setDraft(detail?.draft_answer?.content_en ?? '');
+      setEditing(true);
+      return;
+    }
+    if (requiresReason(action)) {
+      const entered = window.prompt(
+        action === 'reject'
+          ? '반려 사유를 입력하세요 (질문자에게 전달됩니다)'
+          : '원안을 유지하는 사유를 입력하세요'
+      );
+      const resolution = entered === null ? null : withReason(action, entered);
+      if (resolution) onResolve(resolution);
+      return;
+    }
+    // approve · defer — 추가 입력이 없는 액션
+    onResolve({ action } as Resolution);
   };
 
   return (
@@ -117,14 +142,14 @@ export function ReviewCard({
               <p className="mt-2 text-[13px] font-bold text-ink">
                 {detail.question_struct.question}
               </p>
-              {allows(item.reason, 'answer-option') && (
+              {allows(item.reason, 'answer-option') && !resolved && (
                 <div className="mt-2.5 flex flex-col gap-1.5">
                   {detail.question_struct.options.map((opt, i) => (
                     <Button
                       key={opt}
                       size="sm"
                       disabled={busy}
-                      onClick={() => onResolve({ kind: 'answer-option', index: i })}
+                      onClick={() => onResolve({ action: 'answer-option', index: i })}
                       className="justify-start text-left"
                     >
                       {opt}
@@ -158,7 +183,7 @@ export function ReviewCard({
                       size="sm"
                       variant="primary"
                       disabled={busy || !draft.trim()}
-                      onClick={() => onResolve({ kind: 'edit', content: draft.trim() })}
+                      onClick={() => onResolve({ action: 'edit', contentEn: draft.trim() })}
                     >
                       저장
                     </Button>
@@ -200,44 +225,22 @@ export function ReviewCard({
             </div>
           )}
 
-          {/* 액션 — §7.1 매트릭스에서 파생 */}
+          {/* 액션 — §7.1 매트릭스에서 파생한다. 여기에 버튼을 손으로 추가하지 않는다. */}
           {!editing && !resolved && (
             <div className="flex flex-wrap gap-2">
-              {allows(item.reason, 'approve') && (
-                <Button
-                  variant="primary"
-                  disabled={busy}
-                  onClick={() => onResolve({ kind: 'approve' })}
-                  className="flex-1"
-                >
-                  승인 (원안 유지)
-                </Button>
-              )}
-              {allows(item.reason, 'keep') && (
-                <Button disabled={busy} onClick={() => askReason('keep')} className="flex-1">
-                  원안 유지
-                </Button>
-              )}
-              {allows(item.reason, 'edit') && (
-                <Button disabled={busy} onClick={startEdit} className="flex-1">
-                  수정 후 저장
-                </Button>
-              )}
-              {allows(item.reason, 'reject') && (
-                <Button
-                  variant="danger"
-                  disabled={busy}
-                  onClick={() => askReason('reject')}
-                  className="flex-1"
-                >
-                  반려
-                </Button>
-              )}
-              {allows(item.reason, 'defer') && (
-                <Button variant="ghost" disabled={busy} onClick={() => onResolve({ kind: 'defer' })}>
-                  나중에
-                </Button>
-              )}
+              {allowedActions(item.reason)
+                .filter(inButtonRow)
+                .map((action) => (
+                  <Button
+                    key={action}
+                    variant={ACTION_UI[action].variant}
+                    disabled={busy}
+                    onClick={() => handle(action)}
+                    className={action === 'defer' ? undefined : 'flex-1'}
+                  >
+                    {ACTION_UI[action].label}
+                  </Button>
+                ))}
             </div>
           )}
         </div>

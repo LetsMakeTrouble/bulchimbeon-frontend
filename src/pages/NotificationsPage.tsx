@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { notificationsApi } from '../api/notifications';
+import { notificationsApi } from '../infrastructure/http/notifications';
 import { useAuth } from '../context/AuthContext';
 import { useSseRefresh } from '../context/SseContext';
 import type { NotificationItem, NotificationType } from '../types';

@@ -4,7 +4,7 @@ import { Badge, StateBadge } from '../ui/Badge';
 import { CitationBox } from '../inbox/CitationBox';
 import { formatTime } from '../../lib/format';
 import { cn } from '../../lib/cn';
-import { questionsApi } from '../../api/questions';
+import { questionsApi } from '../../infrastructure/http/questions';
 
 /**
  * 질문자 화면의 답변 말풍선.

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { projectsApi } from '../api/projects';
+import { projectsApi } from '../infrastructure/http/projects';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { CreateProjectModal } from '../components/modals/CreateProjectModal';

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, Search } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { notificationsApi } from '../../api/notifications';
+import { notificationsApi } from '../../infrastructure/http/notifications';
 
 export function TopBar() {
   const { activeProject, unreadTotal, setUnreadTotal } = useAuth();

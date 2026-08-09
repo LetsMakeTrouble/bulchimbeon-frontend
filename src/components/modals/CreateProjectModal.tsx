@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Loader2, Upload } from 'lucide-react';
-import { projectsApi } from '../../api/projects';
-import { documentsApi } from '../../api/documents';
+import { projectsApi } from '../../infrastructure/http/projects';
+import { documentsApi } from '../../infrastructure/http/documents';
 import type { ProjectDetail } from '../../types';
 import { Modal } from './Modal';
 import { Button } from '../ui/Button';

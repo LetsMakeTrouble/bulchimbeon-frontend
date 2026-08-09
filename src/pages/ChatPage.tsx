@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowUp, Loader2, Paperclip } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { questionsApi } from '../api/questions';
+import { questionsApi } from '../infrastructure/http/questions';
 import { useSse, useSseRefresh } from '../context/SseContext';
 import type { Citation, QuestionDetail, QuestionListItem } from '../types';
 
@@ -33,6 +33,7 @@ export function ChatPage() {
     if (!projectId) return;
     const page = await questionsApi.list(projectId, { mine: true, limit: 20 });
     // 목록에는 답변 본문이 없다 — 스레드를 그리려면 각 질문의 상세가 필요하다.
+    // ponytail: 20건 N+1 조회, 계약에 목록 확장(embed=answer)이나 무한 스크롤이 생기면 교체
     const details = await Promise.all(
       page.items.map((i) => questionsApi.detail(i.id).catch(() => null))
     );

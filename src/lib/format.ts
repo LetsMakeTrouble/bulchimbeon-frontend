@@ -1,15 +1,13 @@
 /** 화면 표기 헬퍼. 서버가 만든 문자열(§1.5)은 그대로 렌더하고 여기서 손대지 않는다. */
 
-const pad = (n: number) => String(n).padStart(2, '0');
-
-/** "오전 9:02" */
-export function formatTime(iso: string): string {
-  const d = new Date(iso);
-  const h = d.getHours();
-  const meridiem = h < 12 ? '오전' : '오후';
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${meridiem} ${h12}:${pad(d.getMinutes())}`;
-}
+/**
+ * "오전 9:02"
+ *
+ * 직접 12시간제를 계산하지 않는다 — h % 12 === 0(정오·자정) 처리를 손으로 하면
+ * 매번 틀리는 자리다. Intl 이 로캘째로 맞게 준다.
+ */
+const timeFormat = new Intl.DateTimeFormat('ko-KR', { hour: 'numeric', minute: '2-digit' });
+export const formatTime = (iso: string): string => timeFormat.format(new Date(iso));
 
 /** "2026년 8월 4일 화요일" */
 export function formatFullDate(iso: string): string {

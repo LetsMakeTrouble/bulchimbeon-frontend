@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { authApi } from '../api/auth';
+import { authApi } from '../infrastructure/http/auth';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
 import { AuthShell, authInput } from '../components/auth/AuthShell';

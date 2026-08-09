@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ProjectMember } from '../../types';
-import { projectsApi } from '../../api/projects';
+import { projectsApi } from '../../infrastructure/http/projects';
 import { Modal } from './Modal';
 import { Avatar } from '../ui/Avatar';
 import { Button } from '../ui/Button';

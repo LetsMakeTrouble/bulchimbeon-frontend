@@ -6,33 +6,17 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { API_BASE_URL } from '../api/client';
-import { sseApi } from '../api/sse';
-import { notificationsApi } from '../api/notifications';
+import { API_BASE_URL } from '../infrastructure/http/client';
+import { sseApi } from '../infrastructure/http/sse';
+import { notificationsApi } from '../infrastructure/http/notifications';
 import { useAuth } from './AuthContext';
 
-/** §12.3 이벤트 목록. `notification.unread_count` 는 값 자체가 의미라 여기 없다. */
-export type SseEvent =
-  | 'answer.completed'
-  | 'answer.updated'
-  | 'card.created'
-  | 'card.resolved'
-  | 'briefing.ready'
-  | 'document.ingested'
-  | 'sync.completed'
-  | 'sync.failed'
-  | 'notification.created';
-
 /**
- * 재연결 자체가 하나의 신호다.
- *
- * 끊긴 동안의 이벤트는 유실되고 **SSE 에는 재생(replay) 계약이 없다** (§12.2 2번).
- * 그래서 재연결되면 화면에 떠 있는 구독자 전원이 리소스를 GET 으로 다시 읽는다.
+ * §12.3 이벤트 목록. 배열이 원본이고 타입은 거기서 파생시킨다 —
+ * 유니온과 배열에 같은 이름을 두 번 적으면 하나만 고쳤을 때 조용히 어긋난다.
+ * `notification.unread_count` 는 값 자체가 의미라 여기 없다.
  */
-export const SSE_RECONNECT = 'reconnect';
-type Signal = SseEvent | typeof SSE_RECONNECT;
-
-const STREAM_EVENTS: SseEvent[] = [
+const STREAM_EVENTS = [
   'answer.completed',
   'answer.updated',
   'card.created',
@@ -42,7 +26,18 @@ const STREAM_EVENTS: SseEvent[] = [
   'sync.completed',
   'sync.failed',
   'notification.created',
-];
+] as const;
+
+export type SseEvent = (typeof STREAM_EVENTS)[number];
+
+/**
+ * 재연결 자체가 하나의 신호다.
+ *
+ * 끊긴 동안의 이벤트는 유실되고 **SSE 에는 재생(replay) 계약이 없다** (§12.2 2번).
+ * 그래서 재연결되면 화면에 떠 있는 구독자 전원이 리소스를 GET 으로 다시 읽는다.
+ */
+export const SSE_RECONNECT = 'reconnect';
+type Signal = SseEvent | typeof SSE_RECONNECT;
 
 /** §12.2 5번 — 서버는 14초마다 ping 을 보낸다. 30초 넘게 없으면 죽은 연결로 본다. */
 const PING_TIMEOUT_MS = 30_000;

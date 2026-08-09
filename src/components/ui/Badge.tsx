@@ -40,22 +40,6 @@ export function Badge({
   );
 }
 
-/** §1.3 grade — 🟢 즉답 / 🟡 확인 대기 / 🔴 보류 */
-const gradeMeta: Record<Grade, { label: string; tone: Tone; dot: boolean }> = {
-  green: { label: '즉답', tone: 'ok', dot: false },
-  yellow: { label: '확인대기', tone: 'warn', dot: true },
-  red: { label: '보류', tone: 'danger', dot: false },
-};
-
-export function GradeBadge({ grade, className }: { grade: Grade; className?: string }) {
-  const { label, tone, dot } = gradeMeta[grade];
-  return (
-    <Badge tone={tone} dot={dot} className={className}>
-      {label}
-    </Badge>
-  );
-}
-
 /**
  * 질문 목록에서 한 줄로 상태를 읽히게 한다.
  * grade 가 있으면 grade 가 우선 — 질문자에게 "processing/answered" 보다
@@ -73,11 +57,14 @@ export function QuestionStatusBadge({
   if (status === 'processing') return <Badge dot>답변 생성 중</Badge>;
   if (status === 'failed') return <Badge tone="danger">실패</Badge>;
   if (state === 'under_review') return <Badge tone="purple">재검토 중</Badge>;
-  if (grade) return <GradeBadge grade={grade} />;
+  if (grade) return <ReasonBadge reason={grade} />;
   return <Badge>확인 대기</Badge>;
 }
 
-/** §7 카드 reason — 액션 매트릭스의 키를 그대로 뱃지로 */
+/**
+ * §7 카드 reason 표기. Grade('green'|'yellow'|'red')는 CardReason 의 부분집합이라
+ * 등급 뱃지도 이 표 하나로 그린다 — 같은 라벨을 두 표에 적어두면 반드시 갈라진다.
+ */
 const reasonMeta: Record<CardReason, { label: string; tone: Tone }> = {
   green: { label: '즉답', tone: 'ok' },
   yellow: { label: '확인대기', tone: 'warn' },

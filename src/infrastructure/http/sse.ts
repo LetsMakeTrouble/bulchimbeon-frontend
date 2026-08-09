@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { http } from './client';
 
 export const sseApi = {
   /**
@@ -11,8 +11,5 @@ export const sseApi = {
    * 401 이면 client.ts 의 인터셉터가 refresh 를 시도하고, 그마저 실패하면 토큰을 비우고
    * 로그인 화면으로 보낸다 (§12.2 4번).
    */
-  ticket: async () => {
-    const res = await apiClient.post<{ ticket: string; expires_in: number }>('/sse/ticket');
-    return res.data;
-  },
+  ticket: () => http.post<{ ticket: string; expires_in: number }>('/sse/ticket'),
 };

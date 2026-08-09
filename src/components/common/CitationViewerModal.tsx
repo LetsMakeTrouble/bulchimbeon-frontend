@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
 import type { Citation, DocumentContent } from '../../types';
-import { documentsApi } from '../../api/documents';
+import { documentsApi } from '../../infrastructure/http/documents';
 
 /**
  * 근거 원문 열람 (기능 2.2).
