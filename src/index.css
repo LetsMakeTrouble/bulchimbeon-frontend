@@ -1,33 +1,74 @@
-@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap");
 @import "tailwindcss";
 
-:root {
-  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
-  color-scheme: dark;
+/* Design tokens — Figma "Hi-Fi 화면 (v2 · 컬러 시스템)" variables, 1:1 */
+@theme {
+  --font-sans: "Noto Sans KR", -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", sans-serif;
+
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f4f6fc;
+  --color-surface-muted: #f8f9fd;
+  --color-surface-alt: #edf1f7;
+
+  --color-line: #e2e8f0;
+  --color-line-strong: #cbd5e1;
+
+  --color-ink: #1e202c;
+  --color-ink-muted: #6b7387;
+  --color-ink-subtle: #8c93a4;
+
+  --color-brand: #5c7cfa;
+  --color-brand-strong: #4569f9;
+  --color-brand-deep: #3a50b8;
+  --color-brand-surface: #e8edff;
+  --color-brand-surface-strong: #dce4ff;
+  --color-brand-border: #c3cdf7;
+
+  --color-ok: #0e7a63;
+  --color-ok-surface: #e1f9f3;
+  --color-ok-border: #5ce1c4;
+
+  --color-warn: #8a5d00;
+  --color-warn-surface: #fff3d6;
+  --color-warn-border: #ffc84b;
+
+  --color-danger: #d01b39;
+  --color-danger-surface: #ffe8ec;
+  --color-danger-border: #ff5c75;
+
+  --color-info: #1d5fd1;
+  --color-info-surface: #e8f1ff;
+  --color-info-border: #70a6ff;
+
+  --color-purple: #6b45d6;
+  --color-purple-surface: #f0eaff;
+  --color-purple-border: #b89eff;
+}
+
+html {
+  color-scheme: light;
 }
 
 body {
   margin: 0;
-  padding: 0;
-  background-color: #0f172a;
-  color: #f8fafc;
-  min-height: 100vh;
+  background-color: var(--color-surface-subtle);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #1e293b;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 3px;
+  background: var(--color-line-strong);
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: var(--color-ink-subtle);
 }

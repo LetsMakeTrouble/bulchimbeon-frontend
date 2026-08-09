@@ -1,337 +1,251 @@
-import React, { useEffect, useState } from 'react';
-import {
-  Settings,
-  Clock,
-  Key,
-  Copy,
-  Check,
-  Save,
-  Loader2,
-  Sliders,
-  FileCode,
-} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import type { ProjectDetail, ProjectSettings } from '../types';
 import { projectsApi } from '../api/projects';
+import type { Integration, ProjectDetail, ProjectSettings } from '../types';
+import { Badge } from '../components/ui/Badge';
+import { Button } from '../components/ui/Button';
+import { formatRelative } from '../lib/format';
+import { cn } from '../lib/cn';
 
-export const SettingsPage: React.FC = () => {
+/** §3 허용 키 중 담당자가 실제로 만질 만한 것만 노출한다. 나머지는 캘리브레이션 값이다. */
+const TUNABLE: {
+  key: keyof ProjectSettings;
+  label: string;
+  hint: string;
+  min: number;
+  max: number;
+  step?: number;
+}[] = [
+  { key: 'green_threshold', label: '즉답 하한', hint: '이 값 이상이면 🟢 즉답', min: 0, max: 100 },
+  { key: 'yellow_threshold', label: '확인대기 하한', hint: '미만이면 🔴 보류', min: 0, max: 100 },
+  { key: 'grounding_min', label: '근거율 하한', hint: '문장 3개 이상일 때만 적용', min: 0, max: 100 },
+  { key: 'retrieval_top_k', label: '검색 top-k', hint: '답변에 참고할 청크 수', min: 1, max: 20 },
+  { key: 'draft_expire_hours', label: '초안 만료(시간)', hint: '지나면 expired 처리', min: 1, max: 720 },
+  { key: 'briefing_hour', label: '브리핑 시각', hint: '담당자 타임존 기준 (0~23)', min: 0, max: 23 },
+];
+
+export function SettingsPage() {
   const { activeProject, refreshMe } = useAuth();
-  const [detail, setDetail] = useState<ProjectDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
-
-  // Form states
-  const [guidelines, setGuidelines] = useState('');
-  const [settings, setSettings] = useState<Partial<ProjectSettings>>({});
-  const [savingGuidelines, setSavingGuidelines] = useState(false);
-  const [savingSettings, setSavingSettings] = useState(false);
-
-  // Copy invite code state
-  const [copied, setCopied] = useState(false);
-
-  const fetchDetail = async () => {
-    if (!activeProject) return;
-    setLoading(true);
-    setError('');
-    try {
-      const proj = await projectsApi.getDetail(activeProject.id);
-      setDetail(proj);
-      setSettings(proj.settings || {});
-
-      const g = await projectsApi.getGuidelines(activeProject.id);
-      setGuidelines(g.content || '');
-    } catch (err: any) {
-      setError('프로젝트 설정을 불러올 수 없습니다.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchDetail();
-  }, [activeProject?.id]);
-
-  const handleSaveGuidelines = async () => {
-    if (!activeProject) return;
-    setSavingGuidelines(true);
-    setSuccessMsg('');
-    try {
-      await projectsApi.updateGuidelines(activeProject.id, guidelines);
-      setSuccessMsg('프로젝트 응답 지침(가드레일)이 저장되었습니다.');
-    } catch (err: any) {
-      alert(err.response?.data?.error?.message || '지침 저장 실패');
-    } finally {
-      setSavingGuidelines(false);
-    }
-  };
-
-  const handleSaveSettings = async () => {
-    if (!activeProject) return;
-    setSavingSettings(true);
-    setSuccessMsg('');
-    try {
-      const updated = await projectsApi.updateSettings(activeProject.id, settings);
-      setSettings(updated);
-      setSuccessMsg('프로젝트 인계/임계값 설정이 반영되었습니다.');
-      refreshMe();
-    } catch (err: any) {
-      alert(err.response?.data?.error?.message || '설정 저장 실패');
-    } finally {
-      setSavingSettings(false);
-    }
-  };
-
-  const handleRegenInviteCode = async () => {
-    if (!activeProject) return;
-    try {
-      const res = await projectsApi.regenerateInviteCode(activeProject.id);
-      if (detail) setDetail({ ...detail, invite_code: res.invite_code });
-    } catch (err: any) {
-      alert(err.response?.data?.error?.message || '초대 코드 재발급 실패');
-    }
-  };
-
-  const handleCopyInviteCode = () => {
-    if (detail?.invite_code) {
-      navigator.clipboard.writeText(detail.invite_code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20 text-slate-400 space-x-2">
-        <Loader2 className="w-5 h-5 animate-spin" />
-        <span>설정을 불러오는 중입니다...</span>
-      </div>
-    );
-  }
-
+  const projectId = activeProject?.id;
   const isAnswerer = activeProject?.role === 'answerer';
 
+  const [project, setProject] = useState<ProjectDetail | null>(null);
+  const [draft, setDraft] = useState<Partial<ProjectSettings>>({});
+  const [guidelines, setGuidelines] = useState('');
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    if (!projectId) return;
+    setLoading(true);
+    Promise.all([
+      projectsApi.detail(projectId),
+      projectsApi.guidelines(projectId).catch(() => ({ content: '' })),
+      projectsApi.integrations(projectId).catch(() => []),
+    ])
+      .then(([p, g, i]) => {
+        setProject(p);
+        setDraft(p.settings);
+        setGuidelines(g.content ?? '');
+        setIntegrations(i);
+      })
+      .finally(() => setLoading(false));
+  }, [projectId]);
+
+  useEffect(load, [load]);
+
+  const saveSettings = async () => {
+    if (!projectId || !project) return;
+    // 부분 갱신이므로 바뀐 키만 보낸다. 목록 밖의 키를 보내면 400 이다 (§3).
+    const changed = Object.fromEntries(
+      Object.entries(draft).filter(([k, v]) => project.settings[k as keyof ProjectSettings] !== v)
+    );
+    if (Object.keys(changed).length === 0) return;
+    setSaving(true);
+    try {
+      await projectsApi.updateSettings(projectId, changed);
+      setNotice('설정을 저장했습니다.');
+      load();
+    } catch {
+      setNotice('저장에 실패했습니다. 값의 범위를 확인해 주세요.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleAway = async () => {
+    if (!projectId || !project) return;
+    await projectsApi.setAwayMode(projectId, !project.away_mode);
+    // 퇴근 모드를 꺼도 이미 만들어진 카드는 유지된다 (룰 9).
+    setNotice(
+      project.away_mode
+        ? '퇴근 모드를 껐습니다. 이미 쌓인 카드는 그대로 남아 있습니다.'
+        : '퇴근 모드를 켰습니다. 이 시간의 질문은 AI가 1차 답변합니다.'
+    );
+    load();
+    refreshMe();
+  };
+
+  const saveGuidelines = async () => {
+    if (!projectId) return;
+    await projectsApi.updateGuidelines(projectId, guidelines);
+    setNotice('응답 지침을 저장했습니다.');
+  };
+
+  if (!activeProject) {
+    return <p className="p-10 text-[13px] text-ink-muted">프로젝트를 먼저 선택하세요.</p>;
+  }
+  if (!isAnswerer) {
+    return <p className="p-10 text-[13px] text-ink-muted">담당자 전용 화면입니다.</p>;
+  }
+
   return (
-    <div className="space-y-6 max-w-4xl">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-white tracking-tight flex items-center space-x-2">
-          <Settings className="w-6 h-6 text-indigo-400" />
-          <span>지침 및 프로젝트 설정</span>
-        </h1>
-        <p className="text-xs text-slate-400 mt-1">
-          응답 가드레일, AI 판단 임계값, DND 방해금지 시간 및 팀원 초대 코드를 관리합니다.
-        </p>
-      </div>
+    <div className="mx-auto w-full max-w-[820px] px-6 py-8">
+      <h1 className="text-2xl font-bold leading-8 text-ink">설정</h1>
+      <p className="mt-1.5 text-[13px] text-ink-muted">{activeProject.name}</p>
 
-      {error && (
-        <div className="p-3.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
-          {error}
-        </div>
+      {notice && (
+        <p className="mt-4 rounded-lg border border-info-border bg-info-surface px-3 py-2 text-[12px] font-bold text-info">
+          {notice}
+        </p>
       )}
 
-      {successMsg && (
-        <div className="p-3.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center space-x-2">
-          <Check className="w-4 h-4 text-emerald-400" />
-          <span>{successMsg}</span>
-        </div>
+      {loading && (
+        <p className="mt-6 flex items-center gap-2 text-[13px] text-ink-muted">
+          <Loader2 className="size-4 animate-spin" /> 불러오는 중…
+        </p>
       )}
 
-      {/* Invite Code Section */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2 text-indigo-400 font-semibold text-sm">
-            <Key className="w-5 h-5" />
-            <span>팀원 초대 코드 (Invite Code)</span>
-          </div>
-          {isAnswerer && (
-            <button
-              onClick={handleRegenInviteCode}
-              className="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
-            >
-              재발급
-            </button>
-          )}
-        </div>
-        <p className="text-xs text-slate-400">
-          팀원이 이 코드를 사용해 프로젝트에 질문자(Asker) 역할로 참여할 수 있습니다.
-        </p>
+      {project && (
+        <>
+          <Card title="퇴근 모드" caption="켜두면 이 시간의 질문에 AI가 먼저 답하고 카드로 모읍니다">
+            <div className="flex items-center gap-3">
+              <Badge tone={project.away_mode ? 'warn' : 'ok'}>
+                {project.away_mode ? '자리 비움' : '응답 가능'}
+              </Badge>
+              <Button className="ml-auto" onClick={toggleAway}>
+                {project.away_mode ? '퇴근 모드 끄기' : '퇴근 모드 켜기'}
+              </Button>
+            </div>
+          </Card>
 
-        <div className="flex items-center space-x-3">
-          <div className="px-4 py-2.5 rounded-lg bg-slate-950 border border-slate-800 font-mono text-base tracking-widest text-indigo-300 font-bold select-all">
-            {detail?.invite_code || '발급된 코드 없음'}
-          </div>
-          <button
-            onClick={handleCopyInviteCode}
-            className="px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow transition"
+          <Card
+            title="AI 임계치"
+            caption="유사도·근거율 기준. 브리핑·방해금지 시각은 담당자 타임존을 따릅니다"
           >
-            {copied ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
-            <span>{copied ? '복사됨!' : '초대 코드 복사'}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Guidelines Section */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2 text-purple-400 font-semibold text-sm">
-            <FileCode className="w-5 h-5" />
-            <span>프로젝트 응답 지침 (AI Guardrails)</span>
-          </div>
-          {isAnswerer && (
-            <button
-              onClick={handleSaveGuidelines}
-              disabled={savingGuidelines}
-              className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow flex items-center space-x-1.5 transition"
-            >
-              {savingGuidelines ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  <span>지침 저장</span>
-                </>
-              )}
-            </button>
-          )}
-        </div>
-        <p className="text-xs text-slate-400">
-          모든 답변 생성 시 AI 프롬프트에 강제로 주입되는 톤앤매너 및 보안 가드레일 텍스트입니다.
-        </p>
-
-        <textarea
-          value={guidelines}
-          onChange={(e) => setGuidelines(e.target.value)}
-          disabled={!isAnswerer}
-          rows={5}
-          placeholder="예: 답변은 친절하고 명확한 톤으로 작성하며, 확인되지 않은 도메인 외부 파라미터는 명시하지 않는다."
-          className="w-full rounded-lg bg-slate-950 border border-slate-800 p-3.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500 resize-none font-mono leading-relaxed"
-        />
-      </div>
-
-      {/* Thresholds & DND Settings Section (Answerer only) */}
-      {isAnswerer && (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 text-indigo-400 font-semibold text-sm">
-              <Sliders className="w-5 h-5" />
-              <span>AI 판단 임계값 및 DND/브리핑 설정</span>
-            </div>
-            <button
-              onClick={handleSaveSettings}
-              disabled={savingSettings}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow-md shadow-indigo-600/30 flex items-center space-x-1.5 transition"
-            >
-              {savingSettings ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  <span>설정 변경 저장</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Thresholds */}
-            <div className="space-y-4">
-              <h4 className="text-xs font-semibold text-slate-300 border-b border-slate-800 pb-2">
-                신뢰 등급 임계값 (Thresholds)
-              </h4>
-
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">
-                  🟢 즉답 하한선 (`green_threshold`: 0~100)
-                </label>
-                <input
-                  type="number"
-                  value={settings.green_threshold ?? 80}
-                  onChange={(e) =>
-                    setSettings({ ...settings, green_threshold: Number(e.target.value) })
-                  }
-                  className="w-full rounded bg-slate-950 border border-slate-800 px-3 py-2 text-xs text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">
-                  🟡 대기 하한선 (`yellow_threshold`: 0~100)
-                </label>
-                <input
-                  type="number"
-                  value={settings.yellow_threshold ?? 50}
-                  onChange={(e) =>
-                    setSettings({ ...settings, yellow_threshold: Number(e.target.value) })
-                  }
-                  className="w-full rounded bg-slate-950 border border-slate-800 px-3 py-2 text-xs text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">
-                  근거 점수 하한 (`grounding_min`: 0~100)
-                </label>
-                <input
-                  type="number"
-                  value={settings.grounding_min ?? 60}
-                  onChange={(e) =>
-                    setSettings({ ...settings, grounding_min: Number(e.target.value) })
-                  }
-                  className="w-full rounded bg-slate-950 border border-slate-800 px-3 py-2 text-xs text-white"
-                />
-              </div>
-            </div>
-
-            {/* DND & Briefing */}
-            <div className="space-y-4">
-              <h4 className="text-xs font-semibold text-slate-300 border-b border-slate-800 pb-2 flex items-center space-x-1.5">
-                <Clock className="w-4 h-4 text-amber-400" />
-                <span>방해 금지 시간 (DND) & 브리핑 시각</span>
-              </h4>
-
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">
-                  일일 브리핑 시각 (`briefing_hour`: 0~23시)
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  max={23}
-                  value={settings.briefing_hour ?? 9}
-                  onChange={(e) =>
-                    setSettings({ ...settings, briefing_hour: Number(e.target.value) })
-                  }
-                  className="w-full rounded bg-slate-950 border border-slate-800 px-3 py-2 text-xs text-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">DND 시작 (`dnd_start`)</label>
+            <div className="grid grid-cols-2 gap-4">
+              {TUNABLE.map((f) => (
+                <label key={f.key} className="block">
+                  <span className="mb-1 block text-[12px] font-bold text-ink">{f.label}</span>
                   <input
-                    type="text"
-                    value={settings.dnd_start ?? '22:00'}
-                    onChange={(e) => setSettings({ ...settings, dnd_start: e.target.value })}
-                    placeholder="22:00"
-                    className="w-full rounded bg-slate-950 border border-slate-800 px-3 py-2 text-xs text-white font-mono"
+                    type="number"
+                    min={f.min}
+                    max={f.max}
+                    step={f.step ?? 1}
+                    value={String(draft[f.key] ?? '')}
+                    onChange={(e) =>
+                      setDraft((d) => ({ ...d, [f.key]: Number(e.target.value) }))
+                    }
+                    className="h-[38px] w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink focus:border-brand focus:outline-none"
                   />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">DND 종료 (`dnd_end`)</label>
-                  <input
-                    type="text"
-                    value={settings.dnd_end ?? '07:00'}
-                    onChange={(e) => setSettings({ ...settings, dnd_end: e.target.value })}
-                    placeholder="07:00"
-                    className="w-full rounded bg-slate-950 border border-slate-800 px-3 py-2 text-xs text-white font-mono"
-                  />
-                </div>
-              </div>
+                  <span className="mt-1 block text-[11px] text-ink-muted">{f.hint}</span>
+                </label>
+              ))}
+
+              <label className="block">
+                <span className="mb-1 block text-[12px] font-bold text-ink">방해금지 시작</span>
+                <input
+                  type="time"
+                  value={draft.dnd_start ?? ''}
+                  onChange={(e) => setDraft((d) => ({ ...d, dnd_start: e.target.value }))}
+                  className="h-[38px] w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink focus:border-brand focus:outline-none"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-[12px] font-bold text-ink">방해금지 종료</span>
+                <input
+                  type="time"
+                  value={draft.dnd_end ?? ''}
+                  onChange={(e) => setDraft((d) => ({ ...d, dnd_end: e.target.value }))}
+                  className="h-[38px] w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink focus:border-brand focus:outline-none"
+                />
+              </label>
             </div>
-          </div>
-        </div>
+            <Button variant="primary" className="mt-4" disabled={saving} onClick={saveSettings}>
+              {saving && <Loader2 className="size-3.5 animate-spin" />} 저장
+            </Button>
+          </Card>
+
+          <Card title="응답 지침" caption="AI가 답변을 만들 때 따르는 규칙입니다">
+            <textarea
+              value={guidelines}
+              onChange={(e) => setGuidelines(e.target.value)}
+              rows={5}
+              maxLength={10000}
+              placeholder="예: 금액은 반드시 원문 표를 인용해 답한다."
+              className="w-full resize-none rounded-lg border border-line bg-surface p-3 text-[13px] leading-[20px] text-ink focus:border-brand focus:outline-none"
+            />
+            <Button variant="primary" className="mt-3" onClick={saveGuidelines}>
+              지침 저장
+            </Button>
+          </Card>
+
+          <Card title="외부 연동" caption="변경된 파일은 새 버전이 되고 재검토 연쇄가 돕니다">
+            {integrations.length === 0 ? (
+              <p className="text-[13px] text-ink-muted">연결된 연동이 없습니다.</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {integrations.map((i) => (
+                  <li
+                    key={i.id}
+                    className="flex items-center gap-3 rounded-lg border border-line bg-surface px-3.5 py-3"
+                  >
+                    <Badge tone="brand">{i.provider === 'github' ? 'GitHub' : 'Notion'}</Badge>
+                    <span className="text-[12px] text-ink-muted">
+                      {i.last_synced_at
+                        ? `${formatRelative(i.last_synced_at)} 동기화`
+                        : '아직 동기화 안 됨'}
+                    </span>
+                    <Button
+                      size="sm"
+                      className="ml-auto"
+                      onClick={async () => {
+                        await projectsApi.syncIntegration(i.id);
+                        setNotice('동기화를 시작했습니다. 완료되면 알림으로 전달됩니다.');
+                      }}
+                    >
+                      <RefreshCw className="size-3.5" /> 지금 동기화
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </>
       )}
     </div>
   );
-};
+}
+
+function Card({
+  title,
+  caption,
+  children,
+  className,
+}: {
+  title: string;
+  caption: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={cn('mt-4 rounded-xl border border-line bg-surface p-5', className)}>
+      <h2 className="text-[13px] font-bold text-ink">{title}</h2>
+      <p className="mb-3 mt-1 text-[12px] text-ink-muted">{caption}</p>
+      {children}
+    </section>
+  );
+}

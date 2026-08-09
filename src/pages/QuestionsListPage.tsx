@@ -1,268 +1,250 @@
-import React, { useEffect, useState } from 'react';
-import { useOutletContext, Link } from 'react-router-dom';
-import {
-  MessageSquare,
-  AlertTriangle,
-  ChevronRight,
-  BookOpen,
-  Loader2,
-  Sparkles,
-} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Loader2, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import type { Question, Grade, Citation } from '../types';
 import { questionsApi } from '../api/questions';
-import { GradeBadge } from '../components/common/GradeBadge';
+import type { Citation, QuestionDetail, QuestionListItem, QuestionStatus } from '../types';
+import { Badge, QuestionStatusBadge } from '../components/ui/Badge';
+import { Button } from '../components/ui/Button';
+import { CitationBox } from '../components/inbox/CitationBox';
 import { CitationViewerModal } from '../components/common/CitationViewerModal';
+import { formatRelative } from '../lib/format';
+import { cn } from '../lib/cn';
 
-export const QuestionsListPage: React.FC = () => {
+const STATUS_FILTERS: { key: QuestionStatus | 'all'; label: string }[] = [
+  { key: 'all', label: '상태: 전체' },
+  { key: 'answered', label: '답변됨' },
+  { key: 'held', label: '보류' },
+  { key: 'processing', label: '처리 중' },
+  { key: 'failed', label: '실패' },
+];
+
+export function QuestionsListPage() {
   const { activeProject } = useAuth();
-  const { refreshTrigger } = useOutletContext<{ refreshTrigger: number }>();
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [filterGrade, setFilterGrade] = useState<Grade | 'all'>('all');
-  const [lang, setLang] = useState<'ko' | 'en'>('ko');
-  const [selectedCitation, setSelectedCitation] = useState<Citation | null>(null);
+  const projectId = activeProject?.id;
 
-  const fetchQuestions = async () => {
-    if (!activeProject) return;
+  const [items, setItems] = useState<QuestionListItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<QuestionStatus | 'all'>('all');
+  const [query, setQuery] = useState('');
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<QuestionDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [citation, setCitation] = useState<Citation | null>(null);
+
+  const load = useCallback(() => {
+    if (!projectId) return;
     setLoading(true);
-    setError('');
-    try {
-      const data = await questionsApi.list(activeProject.id);
-      setQuestions(data.items);
-    } catch (err: any) {
-      setError('질문 목록을 불러오지 못했습니다.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    questionsApi
+      .list(projectId, { ...(status === 'all' ? {} : { status }), limit: 50 })
+      .then((page) => {
+        setItems(page.items);
+        setTotal(page.total);
+        setSelectedId((prev) => prev ?? page.items[0]?.id ?? null);
+      })
+      .finally(() => setLoading(false));
+  }, [projectId, status]);
+
+  useEffect(load, [load]);
 
   useEffect(() => {
-    fetchQuestions();
-  }, [activeProject?.id, refreshTrigger]);
+    if (!selectedId) return;
+    setDetailLoading(true);
+    questionsApi
+      .detail(selectedId)
+      .then(setDetail)
+      .catch(() => setDetail(null))
+      .finally(() => setDetailLoading(false));
+  }, [selectedId]);
 
-  const filteredQuestions = questions.filter((q) => {
-    if (filterGrade === 'all') return true;
-    return q.answer?.grade === filterGrade;
-  });
+  // 검색은 목록 엔드포인트에 query 파라미터가 없어 클라이언트에서 거른다.
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? items.filter((i) => i.content_ko.toLowerCase().includes(q)) : items;
+  }, [items, query]);
+
+  if (!activeProject) {
+    return <p className="p-10 text-[13px] text-ink-muted">프로젝트를 먼저 선택하세요.</p>;
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white tracking-tight flex items-center space-x-2">
-            <span>질문 피드 및 답변 이력</span>
-            <span className="text-xs font-normal text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">
-              총 {questions.length}건
-            </span>
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            {activeProject ? activeProject.name : '프로젝트를 선택하세요'}
-          </p>
-        </div>
+    <div className="flex h-full flex-col">
+      <div className="shrink-0 border-b border-line bg-surface px-6 py-4">
+        <label className="relative flex h-10 items-center">
+          <Search className="pointer-events-none absolute left-3.5 size-4 text-ink-subtle" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="질문 내용 검색"
+            className="h-full w-full rounded-lg border border-line bg-surface-muted pl-10 pr-3 text-[13px] text-ink placeholder:text-ink-subtle focus:border-brand focus:bg-surface focus:outline-none"
+          />
+        </label>
 
-        {/* Controls: Grade Filter & Language Toggle */}
-        <div className="flex items-center space-x-3">
-          {/* Grade Filter */}
-          <div className="flex items-center space-x-1 bg-slate-900 border border-slate-800 rounded-lg p-1">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {STATUS_FILTERS.map((f) => (
             <button
-              onClick={() => setFilterGrade('all')}
-              className={`text-xs px-2.5 py-1 rounded-md transition ${
-                filterGrade === 'all'
-                  ? 'bg-slate-800 text-white font-semibold'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
+              key={f.key}
+              onClick={() => setStatus(f.key)}
+              className={cn(
+                'rounded-full border px-3 py-1.5 text-[12px] font-bold transition-colors',
+                status === f.key
+                  ? 'border-brand-strong bg-brand-strong text-white'
+                  : 'border-line bg-surface text-ink-muted hover:bg-surface-muted'
+              )}
             >
-              전체
+              {f.label}
             </button>
-            <button
-              onClick={() => setFilterGrade('green')}
-              className={`text-xs px-2.5 py-1 rounded-md transition flex items-center space-x-1 ${
-                filterGrade === 'green'
-                  ? 'bg-emerald-500/20 text-emerald-300 font-semibold'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <span>🟢 즉답</span>
-            </button>
-            <button
-              onClick={() => setFilterGrade('yellow')}
-              className={`text-xs px-2.5 py-1 rounded-md transition flex items-center space-x-1 ${
-                filterGrade === 'yellow'
-                  ? 'bg-amber-500/20 text-amber-300 font-semibold'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <span>🟡 대기</span>
-            </button>
-            <button
-              onClick={() => setFilterGrade('red')}
-              className={`text-xs px-2.5 py-1 rounded-md transition flex items-center space-x-1 ${
-                filterGrade === 'red'
-                  ? 'bg-rose-500/20 text-rose-300 font-semibold'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <span>🔴 보류</span>
-            </button>
-          </div>
-
-          {/* KO/EN Language Switcher */}
-          <div className="flex items-center space-x-1 bg-slate-900 border border-slate-800 rounded-lg p-1">
-            <button
-              onClick={() => setLang('ko')}
-              className={`text-xs px-2.5 py-1 rounded-md font-medium transition ${
-                lang === 'ko'
-                  ? 'bg-indigo-600 text-white font-semibold'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              KO
-            </button>
-            <button
-              onClick={() => setLang('en')}
-              className={`text-xs px-2.5 py-1 rounded-md font-medium transition ${
-                lang === 'en'
-                  ? 'bg-indigo-600 text-white font-semibold'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              EN
-            </button>
-          </div>
+          ))}
+          <span className="ml-auto text-[12px] text-ink-muted">
+            총 {total}건 중 {visible.length}건 표시
+          </span>
         </div>
       </div>
 
-      {/* Main List */}
-      {loading ? (
-        <div className="flex items-center justify-center py-20 text-slate-400 space-x-2">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          <span>질문 목록을 로드하고 있습니다...</span>
-        </div>
-      ) : error ? (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-sm">
-          {error}
-        </div>
-      ) : filteredQuestions.length === 0 ? (
-        <div className="text-center py-20 border border-dashed border-slate-800 rounded-2xl p-8">
-          <MessageSquare className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-          <h3 className="text-sm font-semibold text-slate-300">등록된 질문이 없습니다</h3>
-          <p className="text-xs text-slate-500 mt-1">
-            우측 상단의 '+ 질문 등록' 버튼을 눌러 첫 번째 질문을 남겨보세요.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {filteredQuestions.map((q) => {
-            const answerContent =
-              lang === 'en' ? q.answer?.content_en : q.answer?.content_ko;
-            const questionContent =
-              lang === 'en' ? q.content_en || q.content_ko : q.content_ko;
-
-            return (
-              <div
-                key={q.id}
-                className="bg-slate-900/80 border border-slate-800 hover:border-slate-700/80 rounded-xl p-5 shadow-lg transition space-y-4"
-              >
-                {/* Question Header */}
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1.5 flex-1 pr-4">
-                    <div className="flex items-center space-x-2">
-                      {q.is_urgent && (
-                        <span className="text-[10px] font-bold bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30 flex items-center space-x-1">
-                          <AlertTriangle className="w-3 h-3" />
-                          <span>긴급</span>
-                        </span>
-                      )}
-                      {q.answer && <GradeBadge grade={q.answer.grade} />}
-                      <span className="text-xs text-slate-400">
-                        {q.asker_name || '팀원'} • {new Date(q.created_at).toLocaleString()}
-                      </span>
-                    </div>
-
-                    <h3 className="text-base font-semibold text-white leading-relaxed">
-                      {questionContent}
-                    </h3>
-                  </div>
-
-                  <Link
-                    to={`/questions/${q.id}`}
-                    className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition shrink-0"
-                    title="상세 타임라인 보기"
-                  >
-                    <ChevronRight className="w-5 h-5" />
-                  </Link>
-                </div>
-
-                {/* Answer Box */}
-                {q.answer ? (
-                  <div className="p-4 rounded-lg bg-slate-950/80 border border-slate-850 space-y-3">
-                    <div className="text-xs font-semibold text-indigo-400 flex items-center justify-between">
-                      <span className="flex items-center space-x-1.5">
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>AI 답변 ({q.answer.source === 'reused' ? '공식 Q&A 재사용' : '문서 근거 생성'})</span>
-                      </span>
-                      <span className="text-[10px] text-slate-500 font-mono">
-                        Status: {q.answer.state}
-                      </span>
-                    </div>
-
-                    <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed">
-                      {answerContent || q.answer.content_ko}
-                    </p>
-
-                    {/* Disclaimer */}
-                    {q.answer.disclaimer && (
-                      <p className="text-xs text-amber-400/90 bg-amber-500/10 p-2 rounded border border-amber-500/20">
-                        ⚠️ {q.answer.disclaimer}
-                      </p>
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(320px,420px)_1fr]">
+        {/* 목록 */}
+        <div className="min-h-0 overflow-y-auto border-r border-line bg-surface-muted p-4">
+          {loading && (
+            <p className="flex items-center gap-2 text-[13px] text-ink-muted">
+              <Loader2 className="size-4 animate-spin" /> 불러오는 중…
+            </p>
+          )}
+          {!loading && visible.length === 0 && (
+            <p className="py-10 text-center text-[13px] text-ink-muted">질문이 없습니다.</p>
+          )}
+          <ul className="flex flex-col gap-2">
+            {visible.map((q) => (
+              <li key={q.id}>
+                <button
+                  onClick={() => setSelectedId(q.id)}
+                  className={cn(
+                    'w-full rounded-xl border px-4 py-3.5 text-left transition-colors',
+                    selectedId === q.id
+                      ? 'border-brand bg-surface'
+                      : 'border-transparent bg-surface hover:border-line'
+                  )}
+                >
+                  <p className="text-[14px] font-bold leading-[20px] text-ink">{q.content_ko}</p>
+                  <div className="mt-2.5 flex items-center gap-1.5">
+                    <QuestionStatusBadge status={q.status} grade={q.grade} state={q.state} />
+                    {q.feedback_summary && q.feedback_summary.different > 0 && (
+                      <Badge tone="purple">피드백 {q.feedback_summary.different}</Badge>
                     )}
+                    <span className="ml-auto text-[11px] text-ink-muted">
+                      {formatRelative(q.created_at)}
+                    </span>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
 
-                    {/* Citations List */}
-                    {q.answer.citations && q.answer.citations.length > 0 && (
-                      <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
-                        <span className="text-[11px] font-semibold text-slate-400 block">
-                          인용 근거 문서 ({q.answer.citations.length}건):
-                        </span>
-                        <div className="flex flex-wrap gap-2">
-                          {q.answer.citations.map((cit, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() => setSelectedCitation(cit)}
-                              className="text-xs px-2.5 py-1 rounded bg-slate-900 hover:bg-indigo-950 text-indigo-300 border border-indigo-800/50 flex items-center space-x-1.5 transition text-left"
-                            >
-                              <BookOpen className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                              <span className="font-medium truncate max-w-[180px]">
-                                {cit.document_title}
-                              </span>
-                              <span className="text-[10px] text-indigo-400/70">
-                                "{cit.quote.slice(0, 15)}..."
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="p-3 rounded-lg bg-slate-950/40 border border-slate-800/60 text-xs text-slate-400 flex items-center space-x-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
-                    <span>AI 파이프라인에서 근거를 검색 및 검증하는 중입니다...</span>
-                  </div>
+        {/* 상세 */}
+        <div className="min-h-0 overflow-y-auto bg-surface-subtle p-5">
+          {detailLoading && (
+            <p className="flex items-center gap-2 text-[13px] text-ink-muted">
+              <Loader2 className="size-4 animate-spin" /> 불러오는 중…
+            </p>
+          )}
+          {!detailLoading && !detail && (
+            <p className="py-10 text-center text-[13px] text-ink-muted">
+              질문을 선택하면 상세가 표시됩니다.
+            </p>
+          )}
+          {detail && (
+            <div className="mx-auto flex max-w-[680px] flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <QuestionStatusBadge
+                  status={detail.status}
+                  grade={detail.answer?.grade ?? null}
+                  state={detail.answer?.state}
+                />
+                <span className="text-[12px] text-ink-muted">{detail.asked_by.name}</span>
+                {detail.urgency === 'urgent' && (
+                  <Badge tone="danger" dot>
+                    급함
+                  </Badge>
                 )}
+                <Link to="/chat" className="ml-auto">
+                  <Button variant="primary" size="sm">
+                    대화로 이동 <ArrowRight className="size-3.5" />
+                  </Button>
+                </Link>
               </div>
-            );
-          })}
-        </div>
-      )}
 
-      {/* Citation Modal */}
-      <CitationViewerModal
-        citation={selectedCitation}
-        onClose={() => setSelectedCitation(null)}
-      />
+              <Section title="질문 원문">
+                <p className="text-[13px] leading-[20px] text-ink">{detail.content_ko}</p>
+              </Section>
+
+              {detail.answer && (
+                <Section title="AI 답변 원문">
+                  <p className="whitespace-pre-wrap text-[13px] leading-[20px] text-ink">
+                    {detail.answer.content_ko}
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-ink-muted">
+                    <span>{detail.answer.source === 'reused' ? '재사용' : 'AI 생성'}</span>
+                    {detail.answer.matching_rate !== null && (
+                      <Badge tone="warn">일치도 {detail.answer.matching_rate}%</Badge>
+                    )}
+                    {detail.answer.grounding_score !== null && (
+                      <span>근거율 {detail.answer.grounding_score}%</span>
+                    )}
+                  </div>
+                </Section>
+              )}
+
+              {detail.answer && detail.answer.citations.length > 0 && (
+                <CitationBox citations={detail.answer.citations} onOpen={setCitation} />
+              )}
+
+              {(detail.held_info || detail.failure_info) && (
+                <Section title={detail.held_info ? '보류 사유' : '실패 사유'}>
+                  <p className="text-[13px] leading-[20px] text-ink">
+                    {(detail.held_info ?? detail.failure_info)!.message}
+                  </p>
+                </Section>
+              )}
+
+              {detail.answer?.feedback_summary && (
+                <Section title="피드백 이력">
+                  <p className="text-[13px] text-ink">
+                    맞았다 {detail.answer.feedback_summary.correct}건 · 달랐다{' '}
+                    {detail.answer.feedback_summary.different}건
+                  </p>
+                </Section>
+              )}
+
+              {detail.similar_official_qa && (
+                <Section title="관련 확정 지식">
+                  <p className="text-[13px] font-bold text-ink">
+                    {detail.similar_official_qa.question_ko}
+                  </p>
+                  <p className="mt-1 text-[13px] leading-[20px] text-ink-muted">
+                    {detail.similar_official_qa.answer_ko}
+                  </p>
+                  <p className="mt-1.5 text-[11px] text-ink-subtle">
+                    유사도 {detail.similar_official_qa.similarity.toFixed(2)}
+                  </p>
+                </Section>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {citation && <CitationViewerModal citation={citation} onClose={() => setCitation(null)} />}
     </div>
   );
-};
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-xl border border-line bg-surface px-4 py-3.5">
+      <p className="mb-2 text-[11px] font-bold text-ink-muted">{title}</p>
+      {children}
+    </section>
+  );
+}

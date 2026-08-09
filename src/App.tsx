@@ -1,33 +1,32 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Layout } from './components/layout/Layout';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
+import { ProjectsPage } from './pages/ProjectsPage';
+import { ChatPage } from './pages/ChatPage';
 import { QuestionsListPage } from './pages/QuestionsListPage';
-import { QuestionDetailPage } from './pages/QuestionDetailPage';
-import { InboxPage } from './pages/InboxPage';
 import { DocumentsPage } from './pages/DocumentsPage';
+import { InboxPage } from './pages/InboxPage';
+import { MembersPage } from './pages/MembersPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
-import { Loader2 } from 'lucide-react';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">
-        <Loader2 className="w-6 h-6 animate-spin mr-2" />
-        <span>인증 상태 확인 중...</span>
+      <div className="flex min-h-screen items-center justify-center gap-2 bg-surface-subtle text-[13px] text-ink-muted">
+        <Loader2 className="size-5 animate-spin" />
+        <span>인증 상태 확인 중…</span>
       </div>
     );
   }
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
+  if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
 };
 
@@ -47,12 +46,15 @@ export function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<QuestionsListPage />} />
-            <Route path="questions/:questionId" element={<QuestionDetailPage />} />
-            <Route path="inbox" element={<InboxPage />} />
+            <Route index element={<Navigate to="/chat" replace />} />
+            <Route path="chat" element={<ChatPage />} />
+            <Route path="questions" element={<QuestionsListPage />} />
             <Route path="documents" element={<DocumentsPage />} />
+            <Route path="inbox" element={<InboxPage />} />
+            <Route path="members" element={<MembersPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
+            <Route path="projects/new" element={<ProjectsPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
