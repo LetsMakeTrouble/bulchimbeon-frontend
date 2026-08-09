@@ -1,15 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRef } from 'react';
 import { Loader2, Plug, Upload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { documentsApi } from '../infrastructure/http/documents';
-import { useSseRefresh } from '../context/SseContext';
-import type { DocumentDetail, DocumentItem, DocumentVersion } from '../types';
+import { useDocumentLibrary } from '../application/document/useDocumentLibrary';
+import { canActivate, isStale, STALE_DAYS } from '../domain/document/documentPolicy';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { formatRelative } from '../lib/format';
 import { cn } from '../lib/cn';
-
-const STALE_DAYS = 90;
 
 const sourceLabel: Record<string, string> = {
   upload: '직접 업로드',
@@ -25,81 +22,17 @@ const ingestLabel: Record<string, string> = {
 
 export function DocumentsPage() {
   const { activeProject } = useAuth();
-  const projectId = activeProject?.id;
   const isAnswerer = activeProject?.role === 'answerer';
-
-  const [docs, setDocs] = useState<DocumentItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<DocumentDetail | null>(null);
-  const [content, setContent] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const lib = useDocumentLibrary(activeProject?.id);
   const fileRef = useRef<HTMLInputElement>(null);
-
-  const loadList = useCallback(() => {
-    if (!projectId) return;
-    setLoading(true);
-    documentsApi
-      .list(projectId)
-      .then((list) => {
-        setDocs(list);
-        setSelectedId((prev) => prev ?? list[0]?.id ?? null);
-      })
-      .finally(() => setLoading(false));
-  }, [projectId]);
-
-  useEffect(loadList, [loadList]);
-
-  // 이 이벤트가 오기 전까지 해당 버전은 검색 대상이 아니다 (§4).
-  useSseRefresh(['document.ingested', 'sync.completed', 'sync.failed'], loadList);
-
-  const loadDetail = useCallback((id: string) => {
-    setContent(null);
-    documentsApi.detail(id).then(async (d) => {
-      setDetail(d);
-      const active = d.versions.find((v) => v.is_active) ?? d.versions[0];
-      if (active && active.ingest_status === 'ready') {
-        const c = await documentsApi.versionContent(d.id, active.id).catch(() => null);
-        setContent(c?.content ?? null);
-      }
-    });
-  }, []);
-
-  useEffect(() => {
-    if (selectedId) loadDetail(selectedId);
-  }, [selectedId, loadDetail]);
-
-  const upload = async (file: File) => {
-    if (!projectId) return;
-    setUploading(true);
-    try {
-      const created = await documentsApi.upload(projectId, file);
-      // 인제스트는 비동기다. 201 은 pending 으로 오고 완료는 SSE document.ingested 로 온다 (§4).
-      setNotice('업로드했습니다. 인제스트가 끝나면 검색 대상이 됩니다.');
-      loadList();
-      setSelectedId(created.id);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const activate = async (version: DocumentVersion) => {
-    if (!detail) return;
-    const res = await documentsApi.activateVersion(detail.id, version.id);
-    // 활성 전환 시점에 재검토 연쇄가 돈다 — 몇 건이 재검토 대상인지 반드시 알린다 (룰 5).
-    setNotice(res.message);
-    loadDetail(detail.id);
-    loadList();
-  };
 
   if (!activeProject) {
     return <p className="p-10 text-[13px] text-ink-muted">프로젝트를 먼저 선택하세요.</p>;
   }
 
+  const { docs, loading, detail, content } = lib;
   const activeVersion = detail?.versions.find((v) => v.is_active) ?? null;
-  const isStale =
-    detail && Date.now() - new Date(detail.updated_at).getTime() > STALE_DAYS * 86400000;
+  const stale = detail && isStale(detail.updated_at);
 
   return (
     <div className="grid h-full grid-cols-[280px_1fr_260px]">
@@ -117,19 +50,19 @@ export function DocumentsPage() {
               type="file"
               accept=".md,.txt,.pdf,.docx"
               className="hidden"
-              onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
+              onChange={(e) => e.target.files?.[0] && lib.upload(e.target.files[0])}
             />
             <Button
               variant="primary"
               size="sm"
               className="flex-1"
-              disabled={uploading}
+              disabled={lib.uploading}
               onClick={() => fileRef.current?.click()}
             >
-              {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
+              {lib.uploading ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
               문서 업로드
             </Button>
-            <Button size="sm" className="flex-1" onClick={() => setNotice('설정 → 연동에서 추가하세요.')}>
+            <Button size="sm" className="flex-1" disabled title="설정 → 연동에서 추가하세요">
               <Plug className="size-3.5" /> 연동 추가
             </Button>
           </div>
@@ -145,10 +78,10 @@ export function DocumentsPage() {
           {docs.map((d) => (
             <li key={d.id}>
               <button
-                onClick={() => setSelectedId(d.id)}
+                onClick={() => lib.select(d.id)}
                 className={cn(
                   'w-full rounded-lg border px-3.5 py-3 text-left transition-colors',
-                  selectedId === d.id
+                  lib.selectedId === d.id
                     ? 'border-brand bg-brand-surface/40'
                     : 'border-line bg-surface hover:bg-surface-muted'
                 )}
@@ -180,9 +113,9 @@ export function DocumentsPage() {
 
       {/* 본문 */}
       <div className="min-h-0 overflow-y-auto bg-surface p-8">
-        {notice && (
+        {lib.activateMessage && (
           <p className="mb-4 rounded-lg border border-info-border bg-info-surface px-3 py-2 text-[12px] font-bold text-info">
-            {notice}
+            {lib.activateMessage}
           </p>
         )}
         {!detail ? (
@@ -195,7 +128,7 @@ export function DocumentsPage() {
               <span className="text-[12px] text-ink-muted">
                 {formatRelative(detail.updated_at)} 수정
               </span>
-              {isStale && <Badge tone="warn">{STALE_DAYS}일 이상 미갱신</Badge>}
+              {stale && <Badge tone="warn">{STALE_DAYS}일 이상 미갱신</Badge>}
             </div>
 
             <h2 className="mt-3 text-2xl font-bold leading-8 text-ink">{detail.title}</h2>
@@ -254,8 +187,8 @@ export function DocumentsPage() {
                 </div>
                 <p className="mt-1 truncate text-[11px] text-ink-muted">{v.original_filename}</p>
                 <p className="mt-0.5 text-[11px] text-ink-subtle">{formatRelative(v.created_at)}</p>
-                {isAnswerer && !v.is_active && v.ingest_status === 'ready' && (
-                  <Button size="sm" className="mt-2 w-full" onClick={() => activate(v)}>
+                {isAnswerer && canActivate(v) && (
+                  <Button size="sm" className="mt-2 w-full" onClick={() => lib.activate(v)}>
                     이 버전으로 전환
                   </Button>
                 )}

@@ -15,6 +15,17 @@ export class AlreadyResolvedError extends Error {
   }
 }
 
+/**
+ * 피드백을 받을 수 없는 상태의 답변에 피드백을 보냈다 (§6 D12).
+ * 버튼은 canGiveFeedback 을 보고 감추므로, 나온다면 화면이 스트림 갱신을 놓친 경합뿐이다.
+ */
+export class FeedbackNotAllowedError extends Error {
+  constructor() {
+    super('feedback not allowed for this answer state');
+    this.name = 'FeedbackNotAllowedError';
+  }
+}
+
 /** 매트릭스가 허용하지 않는 액션. 정상 UI 라면 나올 수 없다 — 나오면 버그다. */
 export class InvalidCardActionError extends Error {
   // 파라미터 프로퍼티(`readonly x` in constructor)는 지울 수 없는 문법이라

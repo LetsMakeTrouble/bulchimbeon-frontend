@@ -6,6 +6,7 @@ import type {
   DocumentItem,
   Listed,
 } from '../../types';
+import type { DocumentLibraryRepository } from '../../domain/document/DocumentLibraryRepository';
 
 const postFile = (url: string, file: File, extra?: Record<string, string>) => {
   const form = new FormData();
@@ -43,3 +44,8 @@ export const documentsApi = {
 
   remove: (documentId: string) => http.delete(`/documents/${documentId}`),
 };
+
+// documentsApi 는 포트보다 넓다(addVersion·remove 는 다른 화면이 쓴다) — 리터럴에
+// satisfies 를 바로 걸면 초과 프로퍼티 검사에 걸린다. 변수 참조로 한 단계 거쳐
+// "포트를 만족하는가"만 컴파일 타임에 확인하고, 초과 필드는 통과시킨다.
+documentsApi satisfies DocumentLibraryRepository;

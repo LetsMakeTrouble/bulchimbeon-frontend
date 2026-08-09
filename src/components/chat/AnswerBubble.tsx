@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Citation, QuestionDetail } from '../../types';
 import { Badge, StateBadge } from '../ui/Badge';
 import { CitationBox } from '../inbox/CitationBox';
 import { formatTime } from '../../lib/format';
 import { cn } from '../../lib/cn';
 import { questionsApi } from '../../infrastructure/http/questions';
+import { buildFeedback, canGiveFeedback } from '../../domain/feedback/feedbackPolicy';
+import { FeedbackNotAllowedError } from '../../domain/errors';
 
 /**
  * 질문자 화면의 답변 말풍선.
@@ -24,7 +26,10 @@ export function AnswerBubble({
   onFeedback: (questionId: string) => void;
 }) {
   const [sending, setSending] = useState(false);
+  const [staleNotice, setStaleNotice] = useState(false);
   const answer = question.answer;
+  // 부모가 다시 읽어온 새 상태가 도착하면 알림을 내린다 — 계속 떠 있을 이유가 없다.
+  useEffect(() => setStaleNotice(false), [answer?.state]);
 
   if (question.status === 'processing') {
     return (
@@ -61,21 +66,31 @@ export function AnswerBubble({
   if (!answer) return null;
 
   const isVerified = answer.state === 'verified';
-  const canFeedback = answer.state === 'draft' || answer.state === 'verified';
+  // D12 — expired·rejected·under_review 는 409 다. 버튼은 도메인 판단에서 파생시킨다.
+  const canFeedback = canGiveFeedback(answer.state);
   const alreadyGave = answer.feedback_summary.my_feedback !== null;
 
   const submit = async (verdict: 'correct' | 'different') => {
-    let note: string | undefined;
-    if (verdict === 'different') {
-      // "달랐다" 는 note 가 필수다 (§6) — 없으면 400 이므로 여기서 막는다.
-      const input = window.prompt('무엇이 달랐는지 알려주세요 (담당자에게 전달됩니다)');
-      if (!input?.trim()) return;
-      note = input.trim();
-    }
+    // "달랐다" 는 사유가 필수다(§6) — buildFeedback 이 빈 사유를 걸러 null 을 준다.
+    const note =
+      verdict === 'different'
+        ? window.prompt('무엇이 달랐는지 알려주세요 (담당자에게 전달됩니다)') ?? undefined
+        : undefined;
+    const feedback = buildFeedback(verdict, note);
+    if (!feedback) return;
+
     setSending(true);
     try {
-      await questionsApi.feedback(answer.id, verdict, note);
+      await questionsApi.feedback(answer.id, feedback);
       onFeedback(question.id);
+    } catch (err) {
+      if (err instanceof FeedbackNotAllowedError) {
+        // 화면이 스트림 갱신을 놓쳐 낡은 상태를 보여준 경합이다 — 다시 읽어 맞춘다.
+        setStaleNotice(true);
+        onFeedback(question.id);
+      } else {
+        throw err;
+      }
     } finally {
       setSending(false);
     }
@@ -134,8 +149,14 @@ export function AnswerBubble({
           )}
         </div>
 
+        {staleNotice && (
+          <p className="mt-2 text-[11px] font-bold text-warn">
+            그 사이 답변 상태가 바뀌어 피드백을 받을 수 없습니다. 최신 상태로 갱신했습니다.
+          </p>
+        )}
+
         {/* 크로스체크 — expired·rejected·under_review 는 409 이므로 버튼을 감춘다 (D12) */}
-        {canFeedback && (
+        {canFeedback && !staleNotice && (
           <div className="mt-2 flex items-center gap-2">
             {alreadyGave ? (
               <span className="text-[11px] text-ink-muted">

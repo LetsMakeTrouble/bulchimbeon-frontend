@@ -1,4 +1,4 @@
-import { http } from './client';
+import { errorCode, http } from './client';
 import type {
   AskQuestionResponse,
   FeedbackResponse,
@@ -7,6 +7,8 @@ import type {
   QuestionListItem,
   Urgency,
 } from '../../types';
+import type { Feedback } from '../../domain/feedback/feedbackPolicy';
+import { FeedbackNotAllowedError } from '../../domain/errors';
 
 export const questionsApi = {
   /** §6 목록. 질문자는 기본 자기 것, 담당자는 전체 */
@@ -31,10 +33,16 @@ export const questionsApi = {
   setUrgency: (questionId: string, urgency: Urgency) =>
     http.patch(`/questions/${questionId}`, { urgency }),
 
-  /** 크로스체크. verdict="different" 면 note 필수 */
-  feedback: (answerId: string, verdict: 'correct' | 'different', note?: string) =>
-    http.post<FeedbackResponse>(`/answers/${answerId}/feedback`, {
-      verdict,
-      ...(note ? { note } : {}),
-    }),
+  /**
+   * 크로스체크(§6). Feedback VO 를 받는다 — "different 인데 note 없음"은
+   * 도메인 계층에서 이미 만들어지지 않으므로 여기서 다시 검사하지 않는다.
+   */
+  feedback: async (answerId: string, feedback: Feedback): Promise<FeedbackResponse> => {
+    try {
+      return await http.post<FeedbackResponse>(`/answers/${answerId}/feedback`, feedback);
+    } catch (err) {
+      if (errorCode(err) === 'FEEDBACK_NOT_ALLOWED') throw new FeedbackNotAllowedError();
+      throw err;
+    }
+  },
 };
