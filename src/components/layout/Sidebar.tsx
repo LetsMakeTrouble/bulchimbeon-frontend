@@ -1,11 +1,15 @@
 import { Link, NavLink } from 'react-router-dom';
 import {
+  BookMarked,
   ChevronsUpDown,
   FileText,
   Inbox,
+  Lightbulb,
+  LineChart,
   List,
   MessageSquare,
   Settings,
+  Sunrise,
   User,
 } from 'lucide-react';
 import { cn } from '../../lib/cn';
@@ -103,16 +107,20 @@ export function Sidebar() {
         <NavItem to="/chat" icon={MessageSquare} label="대화" />
         <NavItem to="/questions" icon={List} label="질문 목록" />
         <NavItem to="/documents" icon={FileText} label="문서" />
+        <NavItem to="/official-qa" icon={BookMarked} label="공식 Q&A" />
 
         {isAnswerer && (
           <>
             <p className="px-2 pb-1.5 pt-4 text-[10px] font-bold text-ink-muted">담당자 전용</p>
+            <NavItem to="/briefing" icon={Sunrise} label="아침 브리핑" />
             <NavItem
               to="/inbox"
               icon={Inbox}
               label="브리핑 인박스"
               badge={activeProject?.pending_cards}
             />
+            <NavItem to="/lessons" icon={Lightbulb} label="교훈" />
+            <NavItem to="/metrics" icon={LineChart} label="지표" />
             <NavItem to="/members" icon={User} label="멤버" />
             <NavItem to="/settings" icon={Settings} label="설정" />
           </>

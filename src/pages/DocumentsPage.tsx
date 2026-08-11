@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { Loader2, Plug, Upload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useDocumentLibrary } from '../application/document/useDocumentLibrary';
@@ -64,9 +65,11 @@ export function DocumentsPage() {
                 {lib.uploading ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
                 문서 업로드
               </Button>
-              <Button size="sm" className="h-8 flex-1 rounded-lg" disabled title="설정 → 연동에서 추가하세요">
-                <Plug className="size-3.5" /> 연동 추가
-              </Button>
+              <Link to="/settings" className="flex-1">
+                <Button size="sm" className="h-8 w-full rounded-lg">
+                  <Plug className="size-3.5" /> 연동 추가
+                </Button>
+              </Link>
             </div>
           )}
         </div>

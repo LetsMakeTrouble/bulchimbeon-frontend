@@ -32,18 +32,18 @@ const wire = (r: Resolution): { path: string; body: unknown } => {
   }
 };
 
-export const reviewCardApi: ReviewCardRepository = {
+export const reviewCardApi = {
   /** 정렬(승인 추천 → 긴급 → 오래된 순)은 서버가 한다. 클라이언트가 다시 정렬하지 않는다. */
-  listPending: (projectId) =>
+  listPending: (projectId: string) =>
     http
       .get<Paginated<ReviewCardListItem>>(`/projects/${projectId}/review-cards`, {
         params: { status: 'pending' },
       })
       .then((page) => page.items),
 
-  findDetail: (cardId) => http.get<ReviewCardDetail>(`/review-cards/${cardId}`),
+  findDetail: (cardId: string) => http.get<ReviewCardDetail>(`/review-cards/${cardId}`),
 
-  resolve: async (cardId, resolution): Promise<ResolveOutcome> => {
+  resolve: async (cardId: string, resolution: Resolution): Promise<ResolveOutcome> => {
     const { path, body } = wire(resolution);
     try {
       const res = await http.post<{ deferred_until?: string | null }>(
@@ -57,4 +57,13 @@ export const reviewCardApi: ReviewCardRepository = {
       throw err;
     }
   },
+
+  /** §7.4 — 브리핑 문서 갱신 묶음 전체 유지. reason="doc_update" 전용, 건수만 응답으로 온다. */
+  bulkKeep: (projectId: string, documentVersionId: string) =>
+    http.post<{ document_version_id: string; kept_count: number; resolved_feedbacks: number }>(
+      `/projects/${projectId}/review-cards/bulk-keep`,
+      { document_version_id: documentVersionId }
+    ),
 };
+
+reviewCardApi satisfies ReviewCardRepository;
