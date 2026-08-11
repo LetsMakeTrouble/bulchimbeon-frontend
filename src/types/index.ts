@@ -39,16 +39,6 @@ export interface Listed<T> {
   items: T[];
 }
 
-/** §1.4 */
-export interface ApiError {
-  code: string;
-  message: string;
-  /** 409 ALREADY_RESOLVED 일 때만 */
-  resolution?: string;
-  resolved_at?: string;
-  resolved_by?: { id: string; name: string };
-}
-
 // ── §2 인증 ────────────────────────────────────────────────
 
 export interface User {
@@ -74,13 +64,6 @@ export interface AuthMeResponse {
   user: User;
   projects: UserProjectSummary[];
   unread_notifications_total: number;
-}
-
-export interface LoginResponse {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-  user: User;
 }
 
 // ── §3 프로젝트 ────────────────────────────────────────────
@@ -343,37 +326,6 @@ export interface ReviewCardDetail extends Omit<ReviewCardListItem, 'question_pre
   pending_feedbacks: PendingFeedback[];
 }
 
-/** approve · edit · keep · reject · answer-option 공통 응답 shape */
-export interface CardResolveResponse {
-  answer: { id: string; state: AnswerState; content_ko: string; content_en: string } | null;
-  official_qa_id: string | null;
-  lesson_candidate_id: string | null;
-  resolved_feedbacks: number;
-  selected_option?: { index: number; text: string };
-}
-
-// ── §8 브리핑 ──────────────────────────────────────────────
-
-export interface DocReviewBundle {
-  document_id: string;
-  document_version_id: string;
-  title: string;
-  new_version: number;
-  affected_count: number;
-  cards: ReviewCardListItem[];
-}
-
-export interface BriefingToday {
-  date: string;
-  timezone: string;
-  recommend_approve: ReviewCardListItem[];
-  pending_cards: ReviewCardListItem[];
-  deferred_cards: ReviewCardListItem[];
-  doc_review_bundles: DocReviewBundle[];
-  /** value: null = 표본 없음 → "0%" 가 아니라 "측정 전" */
-  stats_snapshot: { auto_answer_rate: number | null };
-}
-
 // ── §11 알림 ───────────────────────────────────────────────
 
 export type NotificationType =
@@ -398,23 +350,4 @@ export interface NotificationItem {
   payload: { project_id: string; question_id?: string; card_id?: string };
   read_at: string | null;
   created_at: string;
-}
-
-// ── §13 지표 ───────────────────────────────────────────────
-
-export interface RatioMetric {
-  /** null = 표본 없음 → "0%" 가 아니라 "측정 전" 을 표시한다 */
-  value: number | null;
-  target: number;
-  [k: string]: number | null;
-}
-
-export interface ProjectMetrics {
-  window_days: number;
-  auto_answer_rate: RatioMetric;
-  correction_rate: RatioMetric;
-  card_handle_30s_rate: RatioMetric;
-  requestion_instant_rate: RatioMetric;
-  grade_accuracy: AccuracyContext[];
-  saved_wait_hours: { value: number; assumption_hours: number; basis_count: number };
 }

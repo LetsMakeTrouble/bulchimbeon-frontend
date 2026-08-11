@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CardReason, ReviewCardDetail, ReviewCardListItem } from '../../types';
-import type { ReviewCardRepository } from '../../domain/review/ReviewCardRepository';
 import { assertAllowed, type Resolution } from '../../domain/review/resolution';
 import { AlreadyResolvedError } from '../../domain/errors';
-import { reviewCardApi } from '../../infrastructure/http/reviewCardApi';
+import { reviewCardApi as repo } from '../../infrastructure/http/reviewCardApi';
 import { useAuth } from '../../context/AuthContext';
 import { useSseRefresh } from '../../context/SseContext';
 
@@ -24,13 +23,8 @@ export type QueueEvent =
  * - 어떻게 전송하는가     → 인프라 (reviewCardApi)
  * - 어떻게 보이는가       → 표현 (InboxPage)
  *
- * repo 를 인자로 받는 이유는 포트를 실제로 갈아끼울 수 있게 하기 위해서다.
- * 기본값이 있으므로 호출부는 아무것도 몰라도 된다.
  */
-export function useReviewQueue(
-  projectId: string | undefined,
-  repo: ReviewCardRepository = reviewCardApi
-) {
+export function useReviewQueue(projectId: string | undefined) {
   const { refreshMe } = useAuth();
 
   const [cards, setCards] = useState<ReviewCardListItem[]>([]);
@@ -49,7 +43,7 @@ export function useReviewQueue(
       .listPending(projectId)
       .then(setCards)
       .finally(() => setLoading(false));
-  }, [projectId, repo]);
+  }, [projectId]);
 
   useEffect(reload, [reload]);
 
@@ -74,7 +68,7 @@ export function useReviewQueue(
         .then((d) => setDetails((prev) => ({ ...prev, [id]: d })))
         .finally(() => setDetailLoading(false));
     },
-    [openId, details, repo]
+    [openId, details]
   );
 
   const markResolved = useCallback((id: string) => {
@@ -110,7 +104,7 @@ export function useReviewQueue(
         setBusyId(null);
       }
     },
-    [repo, refreshMe, markResolved]
+    [refreshMe, markResolved]
   );
 
   const countsByReason = useMemo(() => {

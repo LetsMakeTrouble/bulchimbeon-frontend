@@ -1,5 +1,4 @@
 import type { Paginated, ReviewCardDetail, ReviewCardListItem } from '../../types';
-import type { ReviewCardRepository } from '../../domain/review/ReviewCardRepository';
 import type { Resolution, ResolveOutcome } from '../../domain/review/resolution';
 import { AlreadyResolvedError } from '../../domain/errors';
 import { errorCode, http } from './client';
@@ -32,18 +31,18 @@ const wire = (r: Resolution): { path: string; body: unknown } => {
   }
 };
 
-export const reviewCardApi: ReviewCardRepository = {
+export const reviewCardApi = {
   /** 정렬(승인 추천 → 긴급 → 오래된 순)은 서버가 한다. 클라이언트가 다시 정렬하지 않는다. */
-  listPending: (projectId) =>
+  listPending: (projectId: string) =>
     http
       .get<Paginated<ReviewCardListItem>>(`/projects/${projectId}/review-cards`, {
         params: { status: 'pending' },
       })
       .then((page) => page.items),
 
-  findDetail: (cardId) => http.get<ReviewCardDetail>(`/review-cards/${cardId}`),
+  findDetail: (cardId: string) => http.get<ReviewCardDetail>(`/review-cards/${cardId}`),
 
-  resolve: async (cardId, resolution): Promise<ResolveOutcome> => {
+  resolve: async (cardId: string, resolution: Resolution): Promise<ResolveOutcome> => {
     const { path, body } = wire(resolution);
     try {
       const res = await http.post<{ deferred_until?: string | null }>(

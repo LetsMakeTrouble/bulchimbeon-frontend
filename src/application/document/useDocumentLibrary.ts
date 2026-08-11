@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ActivateVersionResponse, DocumentDetail, DocumentItem, DocumentVersion } from '../../types';
-import type { DocumentLibraryRepository } from '../../domain/document/DocumentLibraryRepository';
 import { canActivate, hasReadableContent } from '../../domain/document/documentPolicy';
-import { documentsApi } from '../../infrastructure/http/documents';
+import { documentsApi as repo } from '../../infrastructure/http/documents';
 import { useSseRefresh } from '../../context/SseContext';
 
 /**
@@ -13,10 +12,7 @@ import { useSseRefresh } from '../../context/SseContext';
  * - 어떻게 전송하는가         → 인프라 (documentsApi)
  * - 어떻게 보이는가           → 표현 (DocumentsPage)
  */
-export function useDocumentLibrary(
-  projectId: string | undefined,
-  repo: DocumentLibraryRepository = documentsApi
-) {
+export function useDocumentLibrary(projectId: string | undefined) {
   const [docs, setDocs] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -35,7 +31,7 @@ export function useDocumentLibrary(
         setSelectedId((prev) => prev ?? list[0]?.id ?? null);
       })
       .finally(() => setLoading(false));
-  }, [projectId, repo]);
+  }, [projectId]);
 
   useEffect(loadList, [loadList]);
 
@@ -54,7 +50,7 @@ export function useDocumentLibrary(
         }
       });
     },
-    [repo]
+    []
   );
 
   useEffect(() => {
