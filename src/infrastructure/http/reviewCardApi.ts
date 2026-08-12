@@ -56,4 +56,11 @@ export const reviewCardApi = {
       throw err;
     }
   },
+
+  /** §7.4 — 브리핑 문서 갱신 묶음 전체 유지. reason="doc_update" 전용, 건수만 응답으로 온다. */
+  bulkKeep: (projectId: string, documentVersionId: string) =>
+    http.post<{ document_version_id: string; kept_count: number; resolved_feedbacks: number }>(
+      `/projects/${projectId}/review-cards/bulk-keep`,
+      { document_version_id: documentVersionId }
+    ),
 };

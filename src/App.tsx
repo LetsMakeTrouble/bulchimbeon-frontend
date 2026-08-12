@@ -11,6 +11,10 @@ import { ChatPage } from './pages/ChatPage';
 import { QuestionsListPage } from './pages/QuestionsListPage';
 import { DocumentsPage } from './pages/DocumentsPage';
 import { InboxPage } from './pages/InboxPage';
+import { BriefingPage } from './pages/BriefingPage';
+import { LessonsPage } from './pages/LessonsPage';
+import { OfficialQAsPage } from './pages/OfficialQAsPage';
+import { MetricsPage } from './pages/MetricsPage';
 import { MembersPage } from './pages/MembersPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
@@ -53,6 +57,10 @@ export function App() {
             <Route path="questions" element={<QuestionsListPage />} />
             <Route path="documents" element={<DocumentsPage />} />
             <Route path="inbox" element={<InboxPage />} />
+            <Route path="briefing" element={<BriefingPage />} />
+            <Route path="lessons" element={<LessonsPage />} />
+            <Route path="official-qa" element={<OfficialQAsPage />} />
+            <Route path="metrics" element={<MetricsPage />} />
             <Route path="members" element={<MembersPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="notifications" element={<NotificationsPage />} />

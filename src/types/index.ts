@@ -163,14 +163,28 @@ export interface ActivateVersionResponse {
 
 export type IntegrationProvider = 'notion' | 'github';
 
+/** §5. config 는 provider별 모양이고 토큰은 마스킹돼 내려온다 */
 export interface Integration {
   id: string;
   provider: IntegrationProvider;
+  config: Record<string, unknown>;
+  last_synced_at: string | null;
   /** 마지막 동기화 결과 — 시도 자체가 없으면 null */
   last_sync_status: 'ok' | 'failed' | null;
-  last_synced_at: string | null;
   created_at: string;
-  config: Record<string, unknown>;
+}
+
+/** POST /projects/{id}/integrations 요청 config — provider별 필드 */
+export interface NotionIntegrationConfig {
+  token: string;
+  page_ids: string[];
+}
+
+export interface GithubIntegrationConfig {
+  repo: string;
+  token?: string;
+  branch?: string;
+  path_glob?: string;
 }
 
 // ── §6 질문 / 답변 ─────────────────────────────────────────
@@ -328,6 +342,37 @@ export interface ReviewCardDetail extends Omit<ReviewCardListItem, 'question_pre
   pending_feedbacks: PendingFeedback[];
 }
 
+/** approve · edit · keep · reject · answer-option 공통 응답 shape */
+export interface CardResolveResponse {
+  answer: { id: string; state: AnswerState; content_ko: string; content_en: string } | null;
+  official_qa_id: string | null;
+  lesson_candidate_id: string | null;
+  resolved_feedbacks: number;
+  selected_option?: { index: number; text: string };
+}
+
+// ── §8 브리핑 ──────────────────────────────────────────────
+
+export interface DocReviewBundle {
+  document_id: string;
+  document_version_id: string;
+  title: string;
+  new_version: number;
+  affected_count: number;
+  cards: ReviewCardListItem[];
+}
+
+export interface BriefingToday {
+  date: string;
+  timezone: string;
+  recommend_approve: ReviewCardListItem[];
+  pending_cards: ReviewCardListItem[];
+  deferred_cards: ReviewCardListItem[];
+  doc_review_bundles: DocReviewBundle[];
+  /** value: null = 표본 없음 → "0%" 가 아니라 "측정 전" */
+  stats_snapshot: { auto_answer_rate: number | null; questions_24h: number };
+}
+
 // ── §11 알림 ───────────────────────────────────────────────
 
 export type NotificationType =
@@ -352,4 +397,96 @@ export interface NotificationItem {
   payload: { project_id: string; question_id?: string; card_id?: string };
   read_at: string | null;
   created_at: string;
+}
+
+// ── §13 지표 ───────────────────────────────────────────────
+
+export interface RatioMetric {
+  /** null = 표본 없음 → "0%" 가 아니라 "측정 전" 을 표시한다 */
+  value: number | null;
+  target: number;
+  [k: string]: number | null;
+}
+
+export interface ProjectMetrics {
+  window_days: number;
+  auto_answer_rate: RatioMetric;
+  correction_rate: RatioMetric;
+  card_handle_30s_rate: RatioMetric;
+  requestion_instant_rate: RatioMetric;
+  grade_accuracy: AccuracyContext[];
+  saved_wait_hours: { value: number; assumption_hours: number; basis_count: number };
+}
+
+export interface MetricsTimeseriesBucket {
+  date: string;
+  questions: number;
+  green: number;
+  yellow: number;
+  red: number;
+  reused: number;
+  lessons_approved: number;
+  /** 버킷 종료 시점 누적 — 증분이 아니다 */
+  official_qas: number;
+}
+
+export interface MetricsTimeseries {
+  window_days: number;
+  bucket: 'day' | 'week';
+  items: MetricsTimeseriesBucket[];
+}
+
+/** §13 이력 — type 어휘는 04 §5 와 1:1 */
+export interface EventItem {
+  type: string;
+  actor: { id: string; name: string } | null;
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
+// ── §9 공식 Q&A ────────────────────────────────────────────
+
+export type OfficialQAStatus = 'active' | 'under_review' | 'archived';
+
+export interface OfficialQAItem {
+  id: string;
+  question_ko: string;
+  question_en: string;
+  answer_ko: string;
+  answer_en: string;
+  status: OfficialQAStatus;
+  correct_count: number;
+  reuse_count: number;
+  created_at: string;
+}
+
+/** 딥링크용 출처 — source_question_id 로 §6 상세로 이동한다 */
+export interface OfficialQADetail extends OfficialQAItem {
+  source_answer_id: string;
+  source_question_id: string;
+}
+
+export interface OfficialQAArchived {
+  id: string;
+  status: 'archived';
+  archived_at: string;
+}
+
+// ── §10 교훈 ───────────────────────────────────────────────
+
+export type LessonStatus = 'candidate' | 'approved' | 'deleted';
+
+export interface Lesson {
+  id: string;
+  content: string;
+  status: LessonStatus;
+  needs_recheck: boolean;
+  last_used_at: string | null;
+  source_answer_id: string | null;
+  created_at: string;
+}
+
+/** §1.2 페이지네이션 봉투 + cleanup_suggestions(id 배열, 항상 존재) */
+export interface LessonListResponse extends Paginated<Lesson> {
+  cleanup_suggestions: string[];
 }

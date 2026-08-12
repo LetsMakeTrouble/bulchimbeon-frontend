@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { projectsApi } from '../infrastructure/http/projects';
 import type { Integration, ProjectDetail, ProjectSettings } from '../types';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
+import { AddIntegrationModal } from '../components/modals/AddIntegrationModal';
 import { formatRelative } from '../lib/format';
 import { cn } from '../lib/cn';
 
@@ -37,6 +38,8 @@ export function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [addingIntegration, setAddingIntegration] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     if (!projectId) return;
@@ -93,6 +96,17 @@ export function SettingsPage() {
     if (!projectId) return;
     await projectsApi.updateGuidelines(projectId, guidelines);
     setNotice('응답 지침을 저장했습니다.');
+  };
+
+  const removeIntegration = async (integrationId: string) => {
+    if (!window.confirm('이 연동을 제거할까요? 이미 가져온 문서는 남습니다.')) return;
+    setRemovingId(integrationId);
+    try {
+      await projectsApi.removeIntegration(integrationId);
+      load();
+    } finally {
+      setRemovingId(null);
+    }
   };
 
   if (!activeProject) {
@@ -209,6 +223,7 @@ export function SettingsPage() {
                         ? `${formatRelative(i.last_synced_at)} 동기화`
                         : '아직 동기화 안 됨'}
                     </span>
+                    {i.last_sync_status === 'failed' && <Badge tone="danger">실패</Badge>}
                     <Button
                       size="sm"
                       className="ml-auto"
@@ -219,12 +234,35 @@ export function SettingsPage() {
                     >
                       <RefreshCw className="size-3.5" /> 지금 동기화
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      disabled={removingId === i.id}
+                      onClick={() => removeIntegration(i.id)}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
                   </li>
                 ))}
               </ul>
             )}
+            <Button className="mt-3" onClick={() => setAddingIntegration(true)}>
+              + 연동 추가
+            </Button>
           </Card>
         </>
+      )}
+
+      {addingIntegration && projectId && (
+        <AddIntegrationModal
+          projectId={projectId}
+          onClose={() => setAddingIntegration(false)}
+          onDone={() => {
+            setAddingIntegration(false);
+            setNotice('연동을 등록하고 첫 동기화를 시작했습니다. 완료되면 알림으로 전달됩니다.');
+            load();
+          }}
+        />
       )}
     </div>
   );
