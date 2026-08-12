@@ -29,5 +29,6 @@ dist-ssr
 .swarm
 agentdb.rvf
 agentdb.rvf.lock
+agentdb-memory.db
 ruvector.db
 
