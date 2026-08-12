@@ -166,8 +166,10 @@ export type IntegrationProvider = 'notion' | 'github';
 export interface Integration {
   id: string;
   provider: IntegrationProvider;
-  status: string;
-  last_synced_at?: string | null;
+  /** 마지막 동기화 결과 — 시도 자체가 없으면 null */
+  last_sync_status: 'ok' | 'failed' | null;
+  last_synced_at: string | null;
+  created_at: string;
   config: Record<string, unknown>;
 }
 
