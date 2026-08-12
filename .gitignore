@@ -25,3 +25,9 @@ dist-ssr
 .claude
 .claude-flow
 
+# ruflo-core / claude-flow 에이전트 로컬 상태
+.swarm
+agentdb.rvf
+agentdb.rvf.lock
+ruvector.db
+
