@@ -326,6 +326,163 @@ export interface ReviewCardDetail extends Omit<ReviewCardListItem, 'question_pre
   pending_feedbacks: PendingFeedback[];
 }
 
+// ── §8 공식 Q&A ────────────────────────────────────────────
+
+export type OfficialQAStatus = 'active' | 'under_review' | 'archived';
+
+export interface OfficialQAListItem {
+  id: string;
+  question_ko: string;
+  question_en: string;
+  answer_ko: string;
+  answer_en: string;
+  status: OfficialQAStatus;
+  correct_count: number;
+  reuse_count: number;
+  created_at: string;
+}
+
+export interface OfficialQADetail extends OfficialQAListItem {
+  source_answer_id: string;
+  source_question_id: string;
+}
+
+/** DELETE = 보관(archive). 물리 삭제가 아니다 */
+export interface OfficialQAArchived {
+  id: string;
+  status: OfficialQAStatus;
+  archived_at: string;
+}
+
+// ── §9 교훈(Lessons) ───────────────────────────────────────
+
+export type LessonStatus = 'candidate' | 'approved' | 'deleted';
+
+export interface LessonItem {
+  id: string;
+  content: string;
+  status: LessonStatus;
+  /** 근거 문서가 갱신돼 재확인이 필요한 교훈 */
+  needs_recheck: boolean;
+  last_used_at: string | null;
+  source_answer_id: string | null;
+  created_at: string;
+}
+
+/** 목록 봉투에 정리 후보(cleanup_suggestions)가 추가로 붙는다 */
+export interface LessonListResponse extends Paginated<LessonItem> {
+  cleanup_suggestions: string[];
+}
+
+// ── §10 지표(Metrics) ──────────────────────────────────────
+
+/** value 는 표본이 없으면 null — 0% 와 "데이터 없음"을 구분한다 */
+export interface AutoAnswerRate {
+  value: number | null;
+  target: number;
+  green: number;
+  yellow: number;
+  red: number;
+}
+
+export interface CorrectionRate {
+  value: number | null;
+  target: number;
+  correct: number;
+  different: number;
+}
+
+export interface CardHandle30sRate {
+  value: number | null;
+  target: number;
+  within_30s: number;
+  viewed_cards: number;
+}
+
+export interface RequestionInstantRate {
+  value: number | null;
+  target: number;
+  reused: number;
+  reuse_missed: number;
+}
+
+export interface SavedWaitHours {
+  value: number;
+  assumption_hours: number;
+  basis_count: number;
+}
+
+export interface GradeAccuracy {
+  grade: Grade;
+  verified_rate: number | null;
+  sample: number;
+  window_days: number;
+  sufficient: boolean;
+  message: string | null;
+}
+
+export interface ProjectMetrics {
+  window_days: number;
+  auto_answer_rate: AutoAnswerRate;
+  correction_rate: CorrectionRate;
+  card_handle_30s_rate: CardHandle30sRate;
+  requestion_instant_rate: RequestionInstantRate;
+  grade_accuracy: GradeAccuracy[];
+  saved_wait_hours: SavedWaitHours;
+}
+
+export type TimeseriesBucket = 'day' | 'week';
+
+export interface TimeseriesItem {
+  /** "YYYY-MM-DD" */
+  date: string;
+  questions: number;
+  green: number;
+  yellow: number;
+  red: number;
+  reused: number;
+  lessons_approved: number;
+  official_qas: number;
+}
+
+export interface MetricsTimeseries {
+  window_days: number;
+  bucket: TimeseriesBucket;
+  items: TimeseriesItem[];
+}
+
+// ── §7.5 아침 브리핑 ───────────────────────────────────────
+
+/** 브리핑의 승인 추천 카드 — 목록 아이템 + correct_count 가 필수로 붙는다 */
+export interface RecommendedCardItem extends ReviewCardListItem {
+  correct_count: number;
+}
+
+export interface DocReviewBundle {
+  document_id: string;
+  document_version_id: string;
+  title: string;
+  new_version: number;
+  affected_count: number;
+  cards: ReviewCardListItem[];
+}
+
+export interface StatsSnapshot {
+  auto_answer_rate: number | null;
+  questions_24h: number;
+}
+
+export interface BriefingToday {
+  /** "YYYY-MM-DD" — 담당자 타임존 기준 */
+  date: string;
+  timezone: string;
+  recommend_approve: RecommendedCardItem[];
+  pending_cards: ReviewCardListItem[];
+  deferred_cards: ReviewCardListItem[];
+  doc_review_bundles: DocReviewBundle[];
+  stats_snapshot: StatsSnapshot;
+}
+
 // ── §11 알림 ───────────────────────────────────────────────
 
 export type NotificationType =
