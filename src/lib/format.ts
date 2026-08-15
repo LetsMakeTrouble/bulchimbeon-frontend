@@ -39,3 +39,12 @@ export function formatRelative(iso: string): string {
 
 /** 아바타 이니셜 — 한글은 첫 글자, 라틴은 첫 글자 대문자 */
 export const initial = (name: string) => (name ? name.trim()[0].toUpperCase() : '?');
+
+/** "0 B" · "128.4 MB" · "1.3 GB" — 1024 진법 */
+export function formatBytes(bytes: number): string {
+  if (bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const exp = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+  const value = bytes / 1024 ** exp;
+  return `${exp === 0 ? value : value.toFixed(value < 10 ? 1 : 0)} ${units[exp]}`;
+}

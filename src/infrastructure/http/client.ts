@@ -2,10 +2,16 @@ import axios from 'axios';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
-export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: { 'Content-Type': 'application/json' },
-});
+/**
+ * ⚠️ `Content-Type` 을 전역 기본값으로 박지 않는다.
+ *
+ * 전역으로 `application/json` 을 두면 axios 의 transformRequest 가 **FormData 본문까지**
+ * JSON 으로 직렬화한다 (`hasJSONContentType ? JSON.stringify(formDataToJSON(data)) : data`).
+ * 그러면 문서 업로드가 `{"file":{}}` 로 나가 파일 내용이 통째로 사라진다.
+ * 기본값을 비워 두면 axios 가 본문 종류에 맞게 정한다 — 객체는 json, FormData 는
+ * 브라우저가 boundary 까지 붙인 multipart.
+ */
+export const apiClient = axios.create({ baseURL: API_BASE_URL });
 
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token');

@@ -118,6 +118,7 @@ export interface DocumentVersion {
   version_no: number;
   original_filename: string;
   mime: string;
+  size_bytes: number;
   is_active: boolean;
   ingest_status: IngestStatus;
   ingest_error: string | null;
