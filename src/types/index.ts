@@ -451,6 +451,28 @@ export interface MetricsTimeseries {
   items: TimeseriesItem[];
 }
 
+// ── §13.1 사용량·비용 (담당자 전용) ────────────────────────
+
+/** ⚠️ `reasoning_tokens` 는 `output_tokens` 에 **포함**된 값이다. 화면에서 더하지 않는다. */
+export interface UsageTotals {
+  calls: number;
+  input_tokens: number;
+  output_tokens: number;
+  reasoning_tokens: number;
+  /** Decimal 문자열로 내려온다 — 부동소수 오차를 피하려고 서버가 문자열로 준다 */
+  cost_usd: string;
+}
+
+export interface ProjectUsage {
+  window_days: number;
+  total: UsageTotals;
+  /** `user_id` 가 null 인 묶음은 사람이 촉발하지 않은 호출이다(스케줄러 등) */
+  by_actor: { user_id: string | null; user_name: string | null; totals: UsageTotals }[];
+  by_step: { step: string; totals: UsageTotals }[];
+  daily_call_limit: number;
+  calls_today: number;
+}
+
 // ── §7.5 아침 브리핑 ───────────────────────────────────────
 
 /** 브리핑의 승인 추천 카드 — 목록 아이템 + correct_count 가 필수로 붙는다 */
