@@ -6,7 +6,7 @@ import { useDocumentLibrary } from '../application/document/useDocumentLibrary';
 import { canActivate, isStale, STALE_DAYS } from '../domain/document/documentPolicy';
 import { Button } from '../components/ui/Button';
 import { Tag } from '../components/ui/Tag';
-import { formatBytes, formatRelative } from '../lib/format';
+import { formatRelative } from '../lib/format';
 import { cn } from '../lib/cn';
 
 const sourceLabel: Record<string, string> = {
@@ -192,9 +192,7 @@ export function DocumentsPage() {
                 <Tag tone={v.ingest_status === 'failed' ? 'warn' : 'neutral'}>{ingestLabel[v.ingest_status]}</Tag>
               )}
               <p className="truncate text-[11px] text-ink">{v.original_filename}</p>
-              <p className="text-[10px] text-ink-muted">
-                {formatRelative(v.created_at)} · {formatBytes(v.size_bytes)}
-              </p>
+              <p className="text-[10px] text-ink-muted">{formatRelative(v.created_at)}</p>
               {isAnswerer && canActivate(v) && (
                 <Button size="sm" className="h-8 w-full rounded-lg" onClick={() => lib.activate(v)}>
                   이 버전으로 전환

@@ -8,7 +8,6 @@ const version = (overrides: Partial<DocumentVersion>): DocumentVersion => ({
   version_no: 1,
   original_filename: 'a.md',
   mime: 'text/markdown',
-  size_bytes: 1024,
   is_active: false,
   ingest_status: 'ready',
   ingest_error: null,
