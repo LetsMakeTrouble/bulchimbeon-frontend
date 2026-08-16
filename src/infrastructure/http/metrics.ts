@@ -1,5 +1,11 @@
 import { http } from './client';
-import type { MetricsTimeseries, ProjectMetrics, ProjectUsage, TimeseriesBucket } from '../../types';
+import type {
+  EventItem,
+  MetricsTimeseries,
+  ProjectMetrics,
+  ProjectUsage,
+  TimeseriesBucket,
+} from '../../types';
 
 export const metricsApi = {
   get: (projectId: string, days = 30) =>
@@ -15,4 +21,12 @@ export const metricsApi = {
     http.get<MetricsTimeseries>(`/projects/${projectId}/metrics/timeseries`, {
       params: { days, bucket },
     }),
+
+  events: (
+    projectId: string,
+    opts: { entity_type?: string; entity_id?: string; limit?: number } = {}
+  ) =>
+    http.get<{ items: EventItem[] }>(`/projects/${projectId}/events`, { params: opts }).then(
+      (r) => r.items
+    ),
 };

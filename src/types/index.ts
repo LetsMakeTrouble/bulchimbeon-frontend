@@ -473,6 +473,15 @@ export interface ProjectUsage {
   calls_today: number;
 }
 
+// ── §13 이력 — type 어휘는 04 §5 와 1:1 ─────────────────────
+
+export interface EventItem {
+  type: string;
+  actor: { id: string; name: string } | null;
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
 // ── §7.5 아침 브리핑 ───────────────────────────────────────
 
 /** 브리핑의 승인 추천 카드 — 목록 아이템 + correct_count 가 필수로 붙는다 */
