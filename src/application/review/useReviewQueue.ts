@@ -29,6 +29,7 @@ export function useReviewQueue(projectId: string | undefined) {
 
   const [cards, setCards] = useState<ReviewCardListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [details, setDetails] = useState<Record<string, ReviewCardDetail>>({});
   const [detailLoading, setDetailLoading] = useState(false);
@@ -39,16 +40,26 @@ export function useReviewQueue(projectId: string | undefined) {
   const reload = useCallback(() => {
     if (!projectId) return;
     setLoading(true);
+    setError(false);
     repo
       .listPending(projectId)
       .then(setCards)
+      // 실패해도 loading 만 꺼지면 "처리할 카드가 없습니다"로 오인된다 (§7.5 빈 화면과 동일해짐) —
+      // 실패는 빈 상태와 달라야 화면이 재시도를 유도할 수 있다.
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [projectId]);
 
   useEffect(reload, [reload]);
 
   // card.resolved 는 다른 기기에서 처리된 경우다 — 큐를 다시 읽어 맞춘다.
-  useSseRefresh(['card.created', 'card.resolved', 'briefing.ready'], reload);
+  // notification.created 는 문서 갱신 경로다 — 서버가 card.created 대신 이것만 보내므로
+  // 빼면 알림 뱃지만 오르고 큐는 그대로다. 카드와 무관한 알림에도 한 번 더 읽지만,
+  // payload 로 걸러내는 것은 §12.2("SSE 는 갱신 신호로만") 위반이라 그냥 다시 읽는다.
+  useSseRefresh(
+    ['card.created', 'card.resolved', 'briefing.ready', 'notification.created'],
+    reload
+  );
 
   /**
    * ⚠️ 카드를 실제로 연 순간에만, 정확히 1회 상세를 부른다.
@@ -66,6 +77,9 @@ export function useReviewQueue(projectId: string | undefined) {
       repo
         .findDetail(id)
         .then((d) => setDetails((prev) => ({ ...prev, [id]: d })))
+        // details[id] 가 그대로 비어 있으면 ReviewCard 가 이미 "불러오지 못했습니다"를
+        // 보여준다 — 여기선 미처리 rejection 만 막으면 된다.
+        .catch(() => {})
         .finally(() => setDetailLoading(false));
     },
     [openId, details]
@@ -116,6 +130,7 @@ export function useReviewQueue(projectId: string | undefined) {
   return {
     cards,
     loading,
+    error,
     countsByReason,
     resolvedCount: resolvedIds.size,
     isResolved: (id: string) => resolvedIds.has(id),

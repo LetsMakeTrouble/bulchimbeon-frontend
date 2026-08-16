@@ -17,17 +17,20 @@ export function MembersPage() {
   const [members, setMembers] = useState<ProjectMember[]>([]);
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [transferring, setTransferring] = useState(false);
 
   const load = useCallback(() => {
     if (!projectId) return;
     setLoading(true);
+    setError(false);
     Promise.all([projectsApi.members(projectId), projectsApi.detail(projectId)])
       .then(([m, p]) => {
         setMembers(m);
         setProject(p);
       })
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [projectId]);
 
@@ -35,22 +38,34 @@ export function MembersPage() {
 
   const copyInvite = async () => {
     if (!project?.invite_code) return;
-    await navigator.clipboard.writeText(project.invite_code);
-    setNotice('초대 코드를 복사했습니다. 이 코드로 질문자가 참여합니다.');
+    try {
+      await navigator.clipboard.writeText(project.invite_code);
+      setNotice('초대 코드를 복사했습니다. 이 코드로 질문자가 참여합니다.');
+    } catch {
+      setNotice('복사에 실패했습니다. 코드를 직접 선택해 복사해 주세요.');
+    }
   };
 
   const regenerate = async () => {
     if (!projectId) return;
-    const { invite_code } = await projectsApi.regenerateInviteCode(projectId);
-    setProject((p) => (p ? { ...p, invite_code } : p));
-    setNotice('초대 코드를 새로 발급했습니다. 이전 코드는 더 이상 쓸 수 없습니다.');
+    try {
+      const { invite_code } = await projectsApi.regenerateInviteCode(projectId);
+      setProject((p) => (p ? { ...p, invite_code } : p));
+      setNotice('초대 코드를 새로 발급했습니다. 이전 코드는 더 이상 쓸 수 없습니다.');
+    } catch {
+      setNotice('재발급에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+    }
   };
 
   const remove = async (m: ProjectMember) => {
     if (!projectId) return;
     if (!window.confirm(`${m.name} 님을 내보낼까요?`)) return;
-    await projectsApi.removeMember(projectId, m.user_id);
-    load();
+    try {
+      await projectsApi.removeMember(projectId, m.user_id);
+      load();
+    } catch {
+      setNotice('내보내기에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+    }
   };
 
   if (!activeProject) {
@@ -72,6 +87,12 @@ export function MembersPage() {
       {notice && (
         <p className="mt-4 rounded-lg border border-info-border bg-info-surface px-3 py-2 text-[12px] font-bold text-info">
           {notice}
+        </p>
+      )}
+
+      {!loading && error && (
+        <p className="mt-4 rounded-lg border border-danger-border bg-danger-surface px-3 py-2 text-[12px] font-bold text-danger">
+          멤버 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
         </p>
       )}
 

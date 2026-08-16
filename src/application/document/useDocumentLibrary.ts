@@ -15,6 +15,7 @@ import { useSseRefresh } from '../../context/SseContext';
 export function useDocumentLibrary(projectId: string | undefined) {
   const [docs, setDocs] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<DocumentDetail | null>(null);
   const [content, setContent] = useState<string | null>(null);
@@ -24,12 +25,14 @@ export function useDocumentLibrary(projectId: string | undefined) {
   const loadList = useCallback(() => {
     if (!projectId) return;
     setLoading(true);
+    setError(false);
     repo
       .list(projectId)
       .then((list) => {
         setDocs(list);
         setSelectedId((prev) => prev ?? list[0]?.id ?? null);
       })
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [projectId]);
 
@@ -41,14 +44,19 @@ export function useDocumentLibrary(projectId: string | undefined) {
   const loadDetail = useCallback(
     (id: string) => {
       setContent(null);
-      repo.detail(id).then(async (d) => {
-        setDetail(d);
-        const active = d.versions.find((v) => v.is_active) ?? d.versions[0];
-        if (active && hasReadableContent(active)) {
-          const c = await repo.versionContent(d.id, active.id).catch(() => null);
-          setContent(c?.content ?? null);
-        }
-      });
+      repo
+        .detail(id)
+        .then(async (d) => {
+          setDetail(d);
+          const active = d.versions.find((v) => v.is_active) ?? d.versions[0];
+          if (active && hasReadableContent(active)) {
+            const c = await repo.versionContent(d.id, active.id).catch(() => null);
+            setContent(c?.content ?? null);
+          }
+        })
+        // 실패 시 detail 을 그대로 두면 사이드바 선택은 새 문서인데 상세는 이전 문서로
+        // 남는다 — 선택과 상세가 어긋난 채 보이는 것보다 빈 상태가 낫다.
+        .catch(() => setDetail(null));
     },
     []
   );
@@ -83,6 +91,7 @@ export function useDocumentLibrary(projectId: string | undefined) {
   return {
     docs,
     loading,
+    error,
     selectedId,
     select: setSelectedId,
     detail,

@@ -30,6 +30,7 @@ export function QuestionsListPage() {
   const [items, setItems] = useState<QuestionListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState<string | null>(null);
   const [status, setStatus] = useState<QuestionStatus | 'all'>('all');
   const [query, setQuery] = useState('');
 
@@ -44,6 +45,7 @@ export function QuestionsListPage() {
   const load = useCallback(() => {
     if (!projectId) return;
     setLoading(true);
+    setNotice(null);
     questionsApi
       .list(projectId, { ...(status === 'all' ? {} : { status }), limit: 50 })
       .then((page) => {
@@ -51,6 +53,7 @@ export function QuestionsListPage() {
         setTotal(page.total);
         setSelectedId((prev) => prev ?? page.items[0]?.id ?? null);
       })
+      .catch(() => setNotice('질문 목록을 불러오지 못했습니다.'))
       .finally(() => setLoading(false));
   }, [projectId, status]);
 
@@ -145,7 +148,12 @@ export function QuestionsListPage() {
               <Loader2 className="size-4 animate-spin" /> 불러오는 중…
             </p>
           )}
-          {!loading && visible.length === 0 && (
+          {!loading && notice && (
+            <p className="rounded-lg border border-danger-border bg-danger-surface px-3 py-2 text-[12px] font-bold text-danger">
+              {notice}
+            </p>
+          )}
+          {!loading && !notice && visible.length === 0 && (
             <p className="py-10 text-center text-[13px] text-ink-muted">질문이 없습니다.</p>
           )}
           <ul className="flex flex-col gap-2">
@@ -207,7 +215,12 @@ export function QuestionsListPage() {
               <Loader2 className="size-4 animate-spin" /> 불러오는 중…
             </p>
           )}
-          {!detailLoading && !detail && (
+          {!detailLoading && !detail && selectedId && (
+            <p className="py-10 text-center text-[13px] text-danger">
+              상세를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
+            </p>
+          )}
+          {!detailLoading && !detail && !selectedId && (
             <p className="py-10 text-center text-[13px] text-ink-muted">
               질문을 선택하면 상세가 표시됩니다.
             </p>
