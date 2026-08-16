@@ -1,0 +1,10 @@
+# 컨테이너(리눅스) 안에서 읽히는 파일은 줄바꿈을 LF 로 고정한다.
+#
+# 윈도우에서 core.autocrlf=true 로 체크아웃하면 이 파일들이 CRLF 가 되는데,
+# 그대로 이미지에 들어가면 리눅스 도구들이 `\r` 을 값의 일부로 읽는다.
+# (셸 스크립트는 즉시 깨지고, nginx conf 는 지시자에 따라 조용히 어긋난다.)
+# 체크아웃 환경과 무관하게 같은 이미지가 나오도록 여기서 못박는다.
+
+Dockerfile      text eol=lf
+.dockerignore   text eol=lf
+docker/*        text eol=lf

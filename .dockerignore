@@ -1,0 +1,33 @@
+# 빌드 컨텍스트를 데몬으로 보내기 전에 걸러낸다.
+#
+# node_modules 를 빼는 것이 특히 중요하다 — 호스트(Windows)에서 설치된 네이티브 바이너리가
+# COPY 로 들어가면 alpine 컨테이너에서 못 돌고, `npm ci` 결과를 덮어써 원인 모를 빌드 실패가 난다.
+
+node_modules
+dist
+dist-ssr
+
+.git
+.gitignore
+.github
+
+# ⛔ 실제 환경변수 파일은 이미지에 절대 넣지 않는다. 빌드 시 필요한 값은 --build-arg 로
+#    넘어오므로 컨테이너 안에 파일로 들어갈 이유가 없다.
+.env
+.env.*
+
+Dockerfile
+.dockerignore
+
+.claude
+.vscode
+.idea
+.DS_Store
+
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+README.md
+mcp.json
