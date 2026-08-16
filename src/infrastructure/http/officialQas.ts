@@ -1,16 +1,21 @@
 import { http } from './client';
-import type { OfficialQAArchived, OfficialQADetail, OfficialQAItem, Paginated } from '../../types';
+import type { OfficialQAArchived, OfficialQADetail, OfficialQAListItem, Paginated } from '../../types';
 
 export const officialQasApi = {
-  /** query 는 ko/en 질문·답변 본문 키워드 부분일치다 — 재사용 판정용 벡터 검색과는 별개 (§9) */
-  list: (projectId: string, query = '', limit = 20, offset = 0) =>
-    http.get<Paginated<OfficialQAItem>>(`/projects/${projectId}/official-qas`, {
-      params: { query: query || undefined, limit, offset },
+  list: (
+    projectId: string,
+    opts: { query?: string; limit?: number; offset?: number } = {}
+  ) =>
+    http.get<Paginated<OfficialQAListItem>>(`/projects/${projectId}/official-qas`, {
+      params: {
+        query: opts.query || undefined,
+        limit: opts.limit ?? 20,
+        offset: opts.offset ?? 0,
+      },
     }),
 
-  detail: (officialQaId: string) => http.get<OfficialQADetail>(`/official-qas/${officialQaId}`),
+  get: (id: string) => http.get<OfficialQADetail>(`/official-qas/${id}`),
 
-  /** 물리 삭제가 아니라 status→archived 전환 */
-  archive: (officialQaId: string) =>
-    http.delete<OfficialQAArchived>(`/official-qas/${officialQaId}`),
+  /** DELETE 지만 물리 삭제가 아니라 보관(archive)이다 */
+  archive: (id: string) => http.delete<OfficialQAArchived>(`/official-qas/${id}`),
 };

@@ -1,14 +1,20 @@
 import { http } from './client';
-import type { Lesson, LessonListResponse, LessonStatus } from '../../types';
+import type { LessonItem, LessonListResponse, LessonStatus } from '../../types';
 
 export const lessonsApi = {
-  /** status 는 candidate|approved 만 허용 — 그 밖의 값은 서버가 400 을 던진다 (§10.1) */
-  list: (projectId: string, status: LessonStatus, limit = 20, offset = 0) =>
+  list: (
+    projectId: string,
+    opts: { status?: LessonStatus; limit?: number; offset?: number } = {}
+  ) =>
     http.get<LessonListResponse>(`/projects/${projectId}/lessons`, {
-      params: { status, limit, offset },
+      params: {
+        status: opts.status,
+        limit: opts.limit ?? 50,
+        offset: opts.offset ?? 0,
+      },
     }),
 
-  approve: (lessonId: string) => http.post<Lesson>(`/lessons/${lessonId}/approve`),
+  approve: (lessonId: string) => http.post<LessonItem>(`/lessons/${lessonId}/approve`),
 
-  remove: (lessonId: string) => http.delete<Lesson>(`/lessons/${lessonId}`),
+  remove: (lessonId: string) => http.delete<LessonItem>(`/lessons/${lessonId}`),
 };

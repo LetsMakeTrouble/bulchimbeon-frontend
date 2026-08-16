@@ -1,17 +1,32 @@
 import { http } from './client';
-import type { EventItem, MetricsTimeseries, ProjectMetrics } from '../../types';
+import type {
+  EventItem,
+  MetricsTimeseries,
+  ProjectMetrics,
+  ProjectUsage,
+  TimeseriesBucket,
+} from '../../types';
 
 export const metricsApi = {
   get: (projectId: string, days = 30) =>
     http.get<ProjectMetrics>(`/projects/${projectId}/metrics`, { params: { days } }),
 
-  timeseries: (projectId: string, days = 30, bucket: 'day' | 'week' = 'day') =>
+  /** §13.1 — **담당자 전용**이다. 질문자가 부르면 403 이므로 호출 전에 역할을 확인한다. */
+  usage: (projectId: string, windowDays = 30) =>
+    http.get<ProjectUsage>(`/projects/${projectId}/usage`, {
+      params: { window_days: windowDays },
+    }),
+
+  timeseries: (projectId: string, days = 30, bucket: TimeseriesBucket = 'day') =>
     http.get<MetricsTimeseries>(`/projects/${projectId}/metrics/timeseries`, {
       params: { days, bucket },
     }),
 
-  events: (projectId: string, params: { entity_type?: string; entity_id?: string; limit?: number } = {}) =>
-    http
-      .get<{ items: EventItem[] }>(`/projects/${projectId}/events`, { params })
-      .then((r) => r.items),
+  events: (
+    projectId: string,
+    opts: { entity_type?: string; entity_id?: string; limit?: number } = {}
+  ) =>
+    http.get<{ items: EventItem[] }>(`/projects/${projectId}/events`, { params: opts }).then(
+      (r) => r.items
+    ),
 };

@@ -351,7 +351,168 @@ export interface CardResolveResponse {
   selected_option?: { index: number; text: string };
 }
 
-// ── §8 브리핑 ──────────────────────────────────────────────
+// ── §8 공식 Q&A ────────────────────────────────────────────
+
+export type OfficialQAStatus = 'active' | 'under_review' | 'archived';
+
+export interface OfficialQAListItem {
+  id: string;
+  question_ko: string;
+  question_en: string;
+  answer_ko: string;
+  answer_en: string;
+  status: OfficialQAStatus;
+  correct_count: number;
+  reuse_count: number;
+  created_at: string;
+}
+
+export interface OfficialQADetail extends OfficialQAListItem {
+  source_answer_id: string;
+  source_question_id: string;
+}
+
+/** DELETE = 보관(archive). 물리 삭제가 아니다 */
+export interface OfficialQAArchived {
+  id: string;
+  status: OfficialQAStatus;
+  archived_at: string;
+}
+
+// ── §9 교훈(Lessons) ───────────────────────────────────────
+
+export type LessonStatus = 'candidate' | 'approved' | 'deleted';
+
+export interface LessonItem {
+  id: string;
+  content: string;
+  status: LessonStatus;
+  /** 근거 문서가 갱신돼 재확인이 필요한 교훈 */
+  needs_recheck: boolean;
+  last_used_at: string | null;
+  source_answer_id: string | null;
+  created_at: string;
+}
+
+/** 목록 봉투에 정리 후보(cleanup_suggestions)가 추가로 붙는다 */
+export interface LessonListResponse extends Paginated<LessonItem> {
+  cleanup_suggestions: string[];
+}
+
+// ── §10 지표(Metrics) ──────────────────────────────────────
+
+/** value 는 표본이 없으면 null — 0% 와 "데이터 없음"을 구분한다 */
+export interface AutoAnswerRate {
+  value: number | null;
+  target: number;
+  green: number;
+  yellow: number;
+  red: number;
+}
+
+export interface CorrectionRate {
+  value: number | null;
+  target: number;
+  correct: number;
+  different: number;
+}
+
+export interface CardHandle30sRate {
+  value: number | null;
+  target: number;
+  within_30s: number;
+  viewed_cards: number;
+}
+
+export interface RequestionInstantRate {
+  value: number | null;
+  target: number;
+  reused: number;
+  reuse_missed: number;
+}
+
+export interface SavedWaitHours {
+  value: number;
+  assumption_hours: number;
+  basis_count: number;
+}
+
+export interface GradeAccuracy {
+  grade: Grade;
+  verified_rate: number | null;
+  sample: number;
+  window_days: number;
+  sufficient: boolean;
+  message: string | null;
+}
+
+export interface ProjectMetrics {
+  window_days: number;
+  auto_answer_rate: AutoAnswerRate;
+  correction_rate: CorrectionRate;
+  card_handle_30s_rate: CardHandle30sRate;
+  requestion_instant_rate: RequestionInstantRate;
+  grade_accuracy: GradeAccuracy[];
+  saved_wait_hours: SavedWaitHours;
+}
+
+export type TimeseriesBucket = 'day' | 'week';
+
+export interface TimeseriesItem {
+  /** "YYYY-MM-DD" */
+  date: string;
+  questions: number;
+  green: number;
+  yellow: number;
+  red: number;
+  reused: number;
+  lessons_approved: number;
+  official_qas: number;
+}
+
+export interface MetricsTimeseries {
+  window_days: number;
+  bucket: TimeseriesBucket;
+  items: TimeseriesItem[];
+}
+
+// ── §13.1 사용량·비용 (담당자 전용) ────────────────────────
+
+/** ⚠️ `reasoning_tokens` 는 `output_tokens` 에 **포함**된 값이다. 화면에서 더하지 않는다. */
+export interface UsageTotals {
+  calls: number;
+  input_tokens: number;
+  output_tokens: number;
+  reasoning_tokens: number;
+  /** Decimal 문자열로 내려온다 — 부동소수 오차를 피하려고 서버가 문자열로 준다 */
+  cost_usd: string;
+}
+
+export interface ProjectUsage {
+  window_days: number;
+  total: UsageTotals;
+  /** `user_id` 가 null 인 묶음은 사람이 촉발하지 않은 호출이다(스케줄러 등) */
+  by_actor: { user_id: string | null; user_name: string | null; totals: UsageTotals }[];
+  by_step: { step: string; totals: UsageTotals }[];
+  daily_call_limit: number;
+  calls_today: number;
+}
+
+// ── §13 이력 — type 어휘는 04 §5 와 1:1 ─────────────────────
+
+export interface EventItem {
+  type: string;
+  actor: { id: string; name: string } | null;
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
+// ── §7.5 아침 브리핑 ───────────────────────────────────────
+
+/** 브리핑의 승인 추천 카드 — 목록 아이템 + correct_count 가 필수로 붙는다 */
+export interface RecommendedCardItem extends ReviewCardListItem {
+  correct_count: number;
+}
 
 export interface DocReviewBundle {
   document_id: string;
@@ -362,15 +523,20 @@ export interface DocReviewBundle {
   cards: ReviewCardListItem[];
 }
 
+export interface StatsSnapshot {
+  auto_answer_rate: number | null;
+  questions_24h: number;
+}
+
 export interface BriefingToday {
+  /** "YYYY-MM-DD" — 담당자 타임존 기준 */
   date: string;
   timezone: string;
-  recommend_approve: ReviewCardListItem[];
+  recommend_approve: RecommendedCardItem[];
   pending_cards: ReviewCardListItem[];
   deferred_cards: ReviewCardListItem[];
   doc_review_bundles: DocReviewBundle[];
-  /** value: null = 표본 없음 → "0%" 가 아니라 "측정 전" */
-  stats_snapshot: { auto_answer_rate: number | null; questions_24h: number };
+  stats_snapshot: StatsSnapshot;
 }
 
 // ── §11 알림 ───────────────────────────────────────────────
@@ -397,96 +563,4 @@ export interface NotificationItem {
   payload: { project_id: string; question_id?: string; card_id?: string };
   read_at: string | null;
   created_at: string;
-}
-
-// ── §13 지표 ───────────────────────────────────────────────
-
-export interface RatioMetric {
-  /** null = 표본 없음 → "0%" 가 아니라 "측정 전" 을 표시한다 */
-  value: number | null;
-  target: number;
-  [k: string]: number | null;
-}
-
-export interface ProjectMetrics {
-  window_days: number;
-  auto_answer_rate: RatioMetric;
-  correction_rate: RatioMetric;
-  card_handle_30s_rate: RatioMetric;
-  requestion_instant_rate: RatioMetric;
-  grade_accuracy: AccuracyContext[];
-  saved_wait_hours: { value: number; assumption_hours: number; basis_count: number };
-}
-
-export interface MetricsTimeseriesBucket {
-  date: string;
-  questions: number;
-  green: number;
-  yellow: number;
-  red: number;
-  reused: number;
-  lessons_approved: number;
-  /** 버킷 종료 시점 누적 — 증분이 아니다 */
-  official_qas: number;
-}
-
-export interface MetricsTimeseries {
-  window_days: number;
-  bucket: 'day' | 'week';
-  items: MetricsTimeseriesBucket[];
-}
-
-/** §13 이력 — type 어휘는 04 §5 와 1:1 */
-export interface EventItem {
-  type: string;
-  actor: { id: string; name: string } | null;
-  payload: Record<string, unknown>;
-  created_at: string;
-}
-
-// ── §9 공식 Q&A ────────────────────────────────────────────
-
-export type OfficialQAStatus = 'active' | 'under_review' | 'archived';
-
-export interface OfficialQAItem {
-  id: string;
-  question_ko: string;
-  question_en: string;
-  answer_ko: string;
-  answer_en: string;
-  status: OfficialQAStatus;
-  correct_count: number;
-  reuse_count: number;
-  created_at: string;
-}
-
-/** 딥링크용 출처 — source_question_id 로 §6 상세로 이동한다 */
-export interface OfficialQADetail extends OfficialQAItem {
-  source_answer_id: string;
-  source_question_id: string;
-}
-
-export interface OfficialQAArchived {
-  id: string;
-  status: 'archived';
-  archived_at: string;
-}
-
-// ── §10 교훈 ───────────────────────────────────────────────
-
-export type LessonStatus = 'candidate' | 'approved' | 'deleted';
-
-export interface Lesson {
-  id: string;
-  content: string;
-  status: LessonStatus;
-  needs_recheck: boolean;
-  last_used_at: string | null;
-  source_answer_id: string | null;
-  created_at: string;
-}
-
-/** §1.2 페이지네이션 봉투 + cleanup_suggestions(id 배열, 항상 존재) */
-export interface LessonListResponse extends Paginated<Lesson> {
-  cleanup_suggestions: string[];
 }
