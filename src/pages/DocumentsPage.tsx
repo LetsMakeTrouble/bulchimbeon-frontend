@@ -31,7 +31,7 @@ export function DocumentsPage() {
     return <p className="p-10 text-[13px] text-ink-muted">프로젝트를 먼저 선택하세요.</p>;
   }
 
-  const { docs, loading, detail, content } = lib;
+  const { docs, loading, error, detail, content } = lib;
   const activeVersion = detail?.versions.find((v) => v.is_active) ?? null;
   const stale = detail && isStale(detail.updated_at);
   const sortedVersions = detail?.versions.slice().sort((a, b) => b.version_no - a.version_no) ?? [];
@@ -77,6 +77,12 @@ export function DocumentsPage() {
         {loading && (
           <p className="flex items-center gap-2 px-4 text-[13px] text-ink-muted">
             <Loader2 className="size-4 animate-spin" /> 불러오는 중…
+          </p>
+        )}
+
+        {!loading && error && (
+          <p className="mx-3 rounded-lg border border-danger-border bg-danger-surface px-3 py-2 text-[12px] font-bold text-danger">
+            문서 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
           </p>
         )}
 

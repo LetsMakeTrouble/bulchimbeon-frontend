@@ -36,6 +36,7 @@ export function SettingsPage() {
   const [guidelines, setGuidelines] = useState('');
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [addingIntegration, setAddingIntegration] = useState(false);
@@ -44,6 +45,7 @@ export function SettingsPage() {
   const load = useCallback(() => {
     if (!projectId) return;
     setLoading(true);
+    setError(false);
     Promise.all([
       projectsApi.detail(projectId),
       projectsApi.guidelines(projectId).catch(() => ({ content: '' })),
@@ -55,6 +57,7 @@ export function SettingsPage() {
         setGuidelines(g.content ?? '');
         setIntegrations(i);
       })
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [projectId]);
 
@@ -81,21 +84,29 @@ export function SettingsPage() {
 
   const toggleAway = async () => {
     if (!projectId || !project) return;
-    await projectsApi.setAwayMode(projectId, !project.away_mode);
-    // 퇴근 모드를 꺼도 이미 만들어진 카드는 유지된다 (룰 9).
-    setNotice(
-      project.away_mode
-        ? '퇴근 모드를 껐습니다. 이미 쌓인 카드는 그대로 남아 있습니다.'
-        : '퇴근 모드를 켰습니다. 이 시간의 질문은 AI가 1차 답변합니다.'
-    );
-    load();
-    refreshMe();
+    try {
+      await projectsApi.setAwayMode(projectId, !project.away_mode);
+      // 퇴근 모드를 꺼도 이미 만들어진 카드는 유지된다 (룰 9).
+      setNotice(
+        project.away_mode
+          ? '퇴근 모드를 껐습니다. 이미 쌓인 카드는 그대로 남아 있습니다.'
+          : '퇴근 모드를 켰습니다. 이 시간의 질문은 AI가 1차 답변합니다.'
+      );
+      load();
+      refreshMe();
+    } catch {
+      setNotice('전환에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+    }
   };
 
   const saveGuidelines = async () => {
     if (!projectId) return;
-    await projectsApi.updateGuidelines(projectId, guidelines);
-    setNotice('응답 지침을 저장했습니다.');
+    try {
+      await projectsApi.updateGuidelines(projectId, guidelines);
+      setNotice('응답 지침을 저장했습니다.');
+    } catch {
+      setNotice('지침 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+    }
   };
 
   const removeIntegration = async (integrationId: string) => {
@@ -104,6 +115,8 @@ export function SettingsPage() {
     try {
       await projectsApi.removeIntegration(integrationId);
       load();
+    } catch {
+      setNotice('연동 제거에 실패했습니다. 잠시 후 다시 시도해 주세요.');
     } finally {
       setRemovingId(null);
     }
@@ -130,6 +143,12 @@ export function SettingsPage() {
       {loading && (
         <p className="mt-6 flex items-center gap-2 text-[13px] text-ink-muted">
           <Loader2 className="size-4 animate-spin" /> 불러오는 중…
+        </p>
+      )}
+
+      {!loading && error && (
+        <p className="mt-6 rounded-lg border border-danger-border bg-danger-surface px-3 py-2 text-[12px] font-bold text-danger">
+          설정을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
         </p>
       )}
 
@@ -228,8 +247,12 @@ export function SettingsPage() {
                       size="sm"
                       className="ml-auto"
                       onClick={async () => {
-                        await projectsApi.syncIntegration(i.id);
-                        setNotice('동기화를 시작했습니다. 완료되면 알림으로 전달됩니다.');
+                        try {
+                          await projectsApi.syncIntegration(i.id);
+                          setNotice('동기화를 시작했습니다. 완료되면 알림으로 전달됩니다.');
+                        } catch {
+                          setNotice('동기화 시작에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+                        }
                       }}
                     >
                       <RefreshCw className="size-3.5" /> 지금 동기화

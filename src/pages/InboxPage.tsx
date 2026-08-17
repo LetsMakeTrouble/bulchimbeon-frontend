@@ -96,7 +96,7 @@ export function InboxPage() {
     return <p className="p-10 text-[13px] text-ink-muted">담당자 전용 화면입니다.</p>;
   }
 
-  const { cards, loading, countsByReason, resolvedCount } = queue;
+  const { cards, loading, error, countsByReason, resolvedCount } = queue;
   const visible = filter === 'all' ? cards : cards.filter((c) => c.reason === filter);
   const notice = noticeOf(queue.lastEvent);
 
@@ -229,7 +229,12 @@ export function InboxPage() {
             <Loader2 className="size-4 animate-spin" /> 불러오는 중…
           </p>
         )}
-        {!loading && visible.length === 0 && (
+        {!loading && error && (
+          <p className="rounded-xl border border-danger-border bg-danger-surface px-4 py-12 text-center text-[13px] font-bold text-danger">
+            카드를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
+          </p>
+        )}
+        {!loading && !error && visible.length === 0 && (
           <p className="rounded-xl border border-line bg-surface px-4 py-12 text-center text-[13px] text-ink-muted">
             처리할 카드가 없습니다.
           </p>
