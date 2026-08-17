@@ -100,5 +100,6 @@ export function useDocumentLibrary(projectId: string | undefined) {
     upload,
     activate,
     activateMessage,
+    refresh: loadList,
   };
 }

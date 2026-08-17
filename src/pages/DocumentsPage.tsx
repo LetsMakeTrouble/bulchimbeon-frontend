@@ -1,11 +1,11 @@
-import { useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { useRef, useState } from 'react';
 import { Loader2, Plug, Upload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useDocumentLibrary } from '../application/document/useDocumentLibrary';
 import { canActivate, isStale, STALE_DAYS } from '../domain/document/documentPolicy';
 import { Button } from '../components/ui/Button';
 import { Tag } from '../components/ui/Tag';
+import { AddIntegrationModal } from '../components/modals/AddIntegrationModal';
 import { formatRelative } from '../lib/format';
 import { cn } from '../lib/cn';
 
@@ -26,6 +26,7 @@ export function DocumentsPage() {
   const isAnswerer = activeProject?.role === 'answerer';
   const lib = useDocumentLibrary(activeProject?.id);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [showAddIntegration, setShowAddIntegration] = useState(false);
 
   if (!activeProject) {
     return <p className="p-10 text-[13px] text-ink-muted">프로젝트를 먼저 선택하세요.</p>;
@@ -65,11 +66,13 @@ export function DocumentsPage() {
                 {lib.uploading ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
                 문서 업로드
               </Button>
-              <Link to="/settings" className="flex-1">
-                <Button size="sm" className="h-8 w-full rounded-lg">
-                  <Plug className="size-3.5" /> 연동 추가
-                </Button>
-              </Link>
+              <Button
+                size="sm"
+                className="h-8 flex-1 rounded-lg"
+                onClick={() => setShowAddIntegration(true)}
+              >
+                <Plug className="size-3.5" /> 연동 추가
+              </Button>
             </div>
           )}
         </div>
@@ -208,6 +211,16 @@ export function DocumentsPage() {
           ))}
         </ul>
       </div>
+      {showAddIntegration && activeProject && (
+        <AddIntegrationModal
+          projectId={activeProject.id}
+          onClose={() => setShowAddIntegration(false)}
+          onDone={() => {
+            setShowAddIntegration(false);
+            lib.refresh();
+          }}
+        />
+      )}
     </div>
   );
 }

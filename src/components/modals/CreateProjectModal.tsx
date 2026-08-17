@@ -3,8 +3,9 @@ import { Loader2, Upload } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { projectsApi } from '../../infrastructure/http/projects';
 import { documentsApi } from '../../infrastructure/http/documents';
-import type { ProjectDetail } from '../../types';
+import type { IntegrationProvider, ProjectDetail } from '../../types';
 import { Modal } from './Modal';
+import { AddIntegrationModal } from './AddIntegrationModal';
 import { Avatar } from '../ui/Avatar';
 import { Button } from '../ui/Button';
 import { Tag } from '../ui/Tag';
@@ -36,6 +37,8 @@ export function CreateProjectModal({
   const [dndEnd, setDndEnd] = useState('08:00');
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState<string[]>([]);
+  const [integrationModalProvider, setIntegrationModalProvider] = useState<IntegrationProvider | null>(null);
+  const [addedIntegrations, setAddedIntegrations] = useState<string[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -217,8 +220,7 @@ export function CreateProjectModal({
         <div className="mt-3 flex gap-2">
           <Button
             className="h-[38px] flex-1 rounded-lg"
-            disabled
-            title="Notion 연동은 설정 → 연동에서 준비 중입니다"
+            onClick={() => setIntegrationModalProvider('notion')}
           >
             <span className="flex size-[18px] items-center justify-center rounded-[5px] bg-ink text-[10px] font-bold text-white">
               N
@@ -227,8 +229,7 @@ export function CreateProjectModal({
           </Button>
           <Button
             className="h-[38px] flex-1 rounded-lg"
-            disabled
-            title="GitHub 연동은 설정 → 연동에서 준비 중입니다"
+            onClick={() => setIntegrationModalProvider('github')}
           >
             <span className="flex size-[18px] items-center justify-center rounded-[5px] bg-ink text-[10px] font-bold text-white">
               G
@@ -236,6 +237,11 @@ export function CreateProjectModal({
             GitHub 연결
           </Button>
         </div>
+        {addedIntegrations.length > 0 && (
+          <p className="mt-2 text-[11px] text-ink-muted">
+            연동됨: {addedIntegrations.join(', ')} — 첫 동기화 및 인제스트가 진행 중입니다.
+          </p>
+        )}
       </StepCard>
 
       <StepCard n={2} title="AI 임계치" caption="유사도에 따라 답변 상태가 정해집니다">
@@ -320,6 +326,18 @@ export function CreateProjectModal({
           전달됩니다.
         </p>
       </StepCard>
+      {integrationModalProvider && project && (
+        <AddIntegrationModal
+          projectId={project.id}
+          initialProvider={integrationModalProvider}
+          onClose={() => setIntegrationModalProvider(null)}
+          onDone={() => {
+            const label = integrationModalProvider === 'github' ? 'GitHub' : 'Notion';
+            setAddedIntegrations((prev) => (prev.includes(label) ? prev : [...prev, label]));
+            setIntegrationModalProvider(null);
+          }}
+        />
+      )}
     </Modal>
   );
 }

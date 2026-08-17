@@ -17,14 +17,16 @@ const TAB: { key: IntegrationProvider; label: string }[] = [
  */
 export function AddIntegrationModal({
   projectId,
+  initialProvider = 'notion',
   onClose,
   onDone,
 }: {
   projectId: string;
+  initialProvider?: IntegrationProvider;
   onClose: () => void;
   onDone: () => void;
 }) {
-  const [provider, setProvider] = useState<IntegrationProvider>('notion');
+  const [provider, setProvider] = useState<IntegrationProvider>(initialProvider);
   const [token, setToken] = useState('');
   const [pageIds, setPageIds] = useState('');
   const [repo, setRepo] = useState('');
