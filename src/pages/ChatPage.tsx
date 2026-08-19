@@ -35,7 +35,11 @@ export function ChatPage() {
     if (!projectId) return;
     setError(false);
     try {
-      const page = await questionsApi.list(projectId, { mine: true, limit: 20 });
+      // 담당자는 질문할 수 없어(D17) mine=true 면 항상 0건이다 — 담당자에겐 전체 목록을 보여준다.
+      const page = await questionsApi.list(
+        projectId,
+        isAsker ? { mine: true, limit: 20 } : { limit: 20 }
+      );
       // 목록에는 답변 본문이 없다 — 스레드를 그리려면 각 질문의 상세가 필요하다.
       // ponytail: 20건 N+1 조회, 계약에 목록 확장(embed=answer)이나 무한 스크롤이 생기면 교체
       const details = await Promise.all(
@@ -54,7 +58,7 @@ export function ChatPage() {
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, isAsker]);
 
   useEffect(() => {
     loadThread();
