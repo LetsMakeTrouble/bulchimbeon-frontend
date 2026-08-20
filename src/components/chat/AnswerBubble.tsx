@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Citation, QuestionDetail } from '../../types';
+import type { Citation, QuestionDetail, Role } from '../../types';
 import { Badge } from '../ui/Badge';
 import { CitationBox } from '../inbox/CitationBox';
 import { formatTime } from '../../lib/format';
@@ -9,19 +9,24 @@ import { buildFeedback, canGiveFeedback } from '../../domain/feedback/feedbackPo
 import { FeedbackNotAllowedError } from '../../domain/errors';
 
 /**
- * 질문자 화면의 답변 말풍선.
+ * 답변 말풍선. **두 역할이 같이 본다** — 질문자는 자기 답변을, 담당자는 팀원 답변을.
  *
  * 색은 "이 답변을 믿어도 되는가"를 나타낸다:
  *  - draft(참고)  → 노랑. 담당자 확인 전이다.
  *  - verified(확정) → 초록.
  *  - held/failed   → 답변이 없고 서버가 만든 message 를 그대로 렌더한다 (§1.5).
+ *
+ * `role` 을 받는 이유는 크로스체크 때문이다 — 담당자에게는 **누르는 버튼이 아니라
+ * 읽는 정보**다. 판단 자체는 domain/feedback/feedbackPolicy 가 한다.
  */
 export function AnswerBubble({
   question,
+  role,
   onOpenCitation,
   onFeedback,
 }: {
   question: QuestionDetail;
+  role: Role;
   onOpenCitation: (c: Citation) => void;
   onFeedback: (questionId: string) => void;
 }) {
@@ -70,7 +75,7 @@ export function AnswerBubble({
   // 카드 전체를 노랑으로 채우고, 즉답은 흰 배경에 왼쪽 강조선만 준다.
   const isPending = answer.state === 'draft' && answer.grade === 'yellow';
   // D12 — expired·rejected·under_review 는 409 다. 버튼은 도메인 판단에서 파생시킨다.
-  const canFeedback = canGiveFeedback(answer.state);
+  const canFeedback = canGiveFeedback(answer.state, role);
   const alreadyGave = answer.feedback_summary.my_feedback !== null;
   const accent = isVerified ? 'ok' : answer.grade === 'yellow' ? 'warn' : 'ok';
 
@@ -176,7 +181,21 @@ export function AnswerBubble({
           </p>
         )}
 
-        {/* 크로스체크 — expired·rejected·under_review 는 409 이므로 버튼을 감춘다 (D12) */}
+        {/* 담당자에게 크로스체크는 누르는 것이 아니라 읽는 정보다 — 승인 판단의 근거가 된다 */}
+        {role === 'answerer' &&
+          (answer.feedback_summary.correct > 0 || answer.feedback_summary.different > 0) && (
+            <p className="mt-2 flex items-center gap-1.5 text-[11px] text-ink-muted">
+              질문자 크로스체크
+              {answer.feedback_summary.correct > 0 && (
+                <Badge tone="ok">맞았다 {answer.feedback_summary.correct}</Badge>
+              )}
+              {answer.feedback_summary.different > 0 && (
+                <Badge tone="purple">달랐다 {answer.feedback_summary.different}</Badge>
+              )}
+            </p>
+          )}
+
+        {/* 크로스체크 — 질문자만, 그리고 expired·rejected·under_review 는 409 다 (D12) */}
         {canFeedback && !staleNotice && (
           <div className="mt-2 flex items-center gap-2">
             {alreadyGave ? (

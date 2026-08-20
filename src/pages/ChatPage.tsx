@@ -132,7 +132,12 @@ export function ChatPage() {
           {thread.map(({ item, detail }) => (
             <div key={item.id} className="flex flex-col gap-3">
               <QuestionBubble text={detail.content_ko} createdAt={item.created_at} />
-              <AnswerBubble question={detail} onOpenCitation={setCitation} onFeedback={loadThread} />
+              <AnswerBubble
+                question={detail}
+                role={activeProject.role}
+                onOpenCitation={setCitation}
+                onFeedback={loadThread}
+              />
             </div>
           ))}
           <div ref={bottomRef} />

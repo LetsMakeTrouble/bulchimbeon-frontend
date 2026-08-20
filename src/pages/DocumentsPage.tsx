@@ -138,7 +138,13 @@ export function DocumentsPage() {
             </p>
           )}
           {!detail ? (
-            <p className="text-[13px] text-ink-muted">문서를 선택하세요.</p>
+            lib.detailError ? (
+              <p className="rounded-lg border border-danger-border bg-danger-surface px-3 py-2 text-[13px] font-bold text-danger">
+                문서를 불러오지 못했습니다. 다시 선택해 주세요.
+              </p>
+            ) : (
+              <p className="text-[13px] text-ink-muted">문서를 선택하세요.</p>
+            )
           ) : (
             <div className="max-w-[600px]">
               <div className="flex flex-wrap items-center gap-1.5">
