@@ -29,6 +29,8 @@ const chipClass =
 export function QuestionsListPage() {
   const { activeProject } = useAuth();
   const projectId = activeProject?.id;
+  // 질문자에겐 전부 자기 질문이라 이름이 매 행 반복될 뿐이다 — 담당자 목록에서만 쓸모가 있다.
+  const showsAsker = activeProject?.role === 'answerer';
 
   const [items, setItems] = useState<QuestionListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -189,6 +191,7 @@ export function QuestionsListPage() {
                       <Badge tone="purple">피드백 {q.feedback_summary.different}</Badge>
                     )}
                     <span className="ml-auto text-[11px] text-ink-muted">
+                      {showsAsker && `${q.asked_by.name} · `}
                       {formatRelative(q.created_at)}
                     </span>
                   </div>
