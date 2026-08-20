@@ -57,6 +57,14 @@ export function ChatPage() {
    * 이게 없으면 폴링 한 틱마다 상세 20건을 통째로 다시 부른다.
    */
   const detailCache = useRef(new Map<string, QuestionDetail>());
+  /**
+   * 조회 순번.
+   *
+   * A 프로젝트를 읽는 중에 B 로 바꾸면 A 응답이 뒤늦게 도착해 B 화면을 덮는다.
+   * 폴링·SSE 재조회까지 겹치면 같은 화면 안에서도 순서가 뒤집힐 수 있다.
+   * 마지막으로 시작한 조회만 상태를 쓴다.
+   */
+  const loadSeq = useRef(0);
 
   // 질문자는 질문 탭, 담당자는 애초에 질문을 못 하므로(D17) 대화 탭에서 시작한다.
   const activeTab: QuestionMode = tab ?? (isAsker ? 'question' : 'conversation');
@@ -68,6 +76,7 @@ export function ChatPage() {
 
   const loadThread = useCallback(async () => {
     if (!projectId) return;
+    const seq = ++loadSeq.current;
     setError(false);
     let off = false;
     try {
@@ -103,16 +112,22 @@ export function ChatPage() {
             byId.set(item.id, detail);
           })
       );
+      // 낡은 조회가 캐시를 덮으면 새 프로젝트가 방금 읽어둔 상세를 잃는다.
+      if (seq !== loadSeq.current) return;
       detailCache.current = nextCache;
 
       setEntries(buildThread(page.items, byId, messages));
     } catch {
       // 실패해도 loading 이 안 꺼지면 스피너가 영구히 멈추지 않는다 — try 없이 await 만
       // 쌓이면 여기서 던진 예외가 setLoading(false) 를 건너뛰고 미처리 rejection 이 된다.
+      if (seq !== loadSeq.current) return;
       setError(true);
     } finally {
-      setTalkOff(off);
-      setLoading(false);
+      // try 안의 return 도 여기를 지난다 — 그래서 여기서도 순번을 다시 본다.
+      if (seq === loadSeq.current) {
+        setTalkOff(off);
+        setLoading(false);
+      }
     }
   }, [projectId, isAsker]);
 
@@ -167,7 +182,10 @@ export function ChatPage() {
 
   const send = async () => {
     const text = draft.trim();
-    if (!projectId || !role || !text || !canSendHere) return;
+    // `sending` 가드는 Cmd+Enter 연타용이다 — 보내기 버튼은 disabled 로 막히지만
+    // 단축키는 버튼을 거치지 않고 이 함수를 직접 부른다. state 반영 전에 두 번째
+    // keydown 이 들어오면 같은 내용이 두 번 POST 된다.
+    if (!projectId || !role || !text || !canSendHere || sending) return;
     setSending(true);
     setSendNotice(null);
     try {
