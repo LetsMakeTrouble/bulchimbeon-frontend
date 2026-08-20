@@ -20,6 +20,9 @@ const STATUS_FILTERS: { key: QuestionStatus | 'all'; label: string }[] = [
   { key: 'failed', label: '실패' },
 ];
 
+/** 한 번에 읽어오는 건수. 이 수만큼 꽉 차 오면 뒤에 더 있을 수 있다는 뜻이다. */
+const PAGE_LIMIT = 50;
+
 const chipClass =
   'flex h-[30px] items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-[12px] font-bold transition-colors';
 
@@ -28,7 +31,6 @@ export function QuestionsListPage() {
   const projectId = activeProject?.id;
 
   const [items, setItems] = useState<QuestionListItem[]>([]);
-  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<string | null>(null);
   const [status, setStatus] = useState<QuestionStatus | 'all'>('all');
@@ -47,11 +49,13 @@ export function QuestionsListPage() {
     setLoading(true);
     setNotice(null);
     questionsApi
-      .list(projectId, { ...(status === 'all' ? {} : { status }), limit: 50 })
+      .list(projectId, { ...(status === 'all' ? {} : { status }), limit: PAGE_LIMIT })
       .then((page) => {
         setItems(page.items);
-        setTotal(page.total);
-        setSelectedId((prev) => prev ?? page.items[0]?.id ?? null);
+        // 대화 발화를 고르면 좌측 목록에 없는 항목이 우측 상세에 "질문 원문"으로 뜬다.
+        setSelectedId(
+          (prev) => prev ?? page.items.find((i) => i.mode !== 'conversation')?.id ?? null
+        );
       })
       .catch(() => setNotice('질문 목록을 불러오지 못했습니다.'))
       .finally(() => setLoading(false));
@@ -70,14 +74,21 @@ export function QuestionsListPage() {
       .finally(() => setDetailLoading(false));
   }, [selectedId]);
 
+  /**
+   * 대화 발화도 `questions` 에 섞여 온다 — 여기는 질문 목록이라 먼저 뺀다.
+   * 목록 API 에 mode 필터가 없어 클라이언트 몫이다.
+   * ponytail: 서버에 mode 필터가 생기면 이 단계는 사라진다
+   */
+  const questions = useMemo(() => items.filter((i) => i.mode !== 'conversation'), [items]);
+
   // 검색은 목록 엔드포인트에 query 파라미터가 없어 클라이언트에서 거른다.
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     // ponytail: 현재 페이지 20건만 훑는 클라이언트 검색, 목록 API 에 q 파라미터가 생기면 서버로 이관
-    let list = q ? items.filter((i) => i.content_ko.toLowerCase().includes(q)) : items;
+    let list = q ? questions.filter((i) => i.content_ko.toLowerCase().includes(q)) : questions;
     if (feedbackOnly) list = list.filter((i) => (i.feedback_summary?.different ?? 0) > 0);
     return list;
-  }, [items, query, feedbackOnly]);
+  }, [questions, query, feedbackOnly]);
 
   if (!activeProject) {
     return <p className="p-10 text-[13px] text-ink-muted">프로젝트를 먼저 선택하세요.</p>;
@@ -135,7 +146,10 @@ export function QuestionsListPage() {
             기간
           </span>
           <span className="ml-auto text-[11px] text-ink-muted">
-            총 {total}건 중 {visible.length}건 표시
+            {/* 서버 total 은 대화 발화까지 센 값이고, mode 필터가 없어 뺄 수도 없다
+                (다음 페이지의 대화 건수를 모른다) — 그래서 불러온 질문 수만 말한다 */}
+            질문 {questions.length}건 중 {visible.length}건 표시
+            {items.length >= PAGE_LIMIT && ' · 더 있을 수 있음'}
           </span>
         </div>
       </div>

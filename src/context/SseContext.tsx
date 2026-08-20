@@ -19,6 +19,7 @@ import { useAuth } from './AuthContext';
 const STREAM_EVENTS = [
   'answer.completed',
   'answer.updated',
+  'message.created',
   'card.created',
   'card.resolved',
   'briefing.ready',

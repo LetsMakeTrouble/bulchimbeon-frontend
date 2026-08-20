@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import type { Citation, QuestionDetail, Role } from '../../types';
 import { Badge } from '../ui/Badge';
 import { CitationBox } from '../inbox/CitationBox';
-import { formatTime } from '../../lib/format';
 import { cn } from '../../lib/cn';
 import { questionsApi } from '../../infrastructure/http/questions';
 import { buildFeedback, canGiveFeedback } from '../../domain/feedback/feedbackPolicy';
@@ -254,17 +253,6 @@ function Row({
         AI
       </span>
       {children}
-    </div>
-  );
-}
-
-export function QuestionBubble({ text, createdAt }: { text: string; createdAt: string }) {
-  return (
-    <div className="flex justify-end">
-      <div className="max-w-[560px] rounded-xl rounded-br-sm bg-brand-strong px-4 py-3">
-        <p className="whitespace-pre-wrap text-[14px] leading-[22px] text-white">{text}</p>
-        <p className="mt-1 text-right text-[11px] text-white/70">{formatTime(createdAt)}</p>
-      </div>
     </div>
   );
 }
