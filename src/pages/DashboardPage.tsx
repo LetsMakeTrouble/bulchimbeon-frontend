@@ -58,6 +58,13 @@ export function DashboardPage() {
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState(false);
   const [usage, setUsage] = useState<ProjectUsage | null>(null);
+  /**
+   * 실패와 "아직 로딩 중"을 구분한다.
+   *
+   * 없으면 요청이 실패해도 usage 가 null 로 남아 "사용량을 불러오는 중…" 이 영구히 떠 있다 —
+   * 사용자는 느린 것으로 오해하고 기다리며, 실패했다는 사실이 어디에도 남지 않는다.
+   */
+  const [usageFailed, setUsageFailed] = useState(false);
   const [panelWidth, setPanelWidth] = useState(PANEL_DEFAULT_WIDTH);
 
   /**
@@ -90,12 +97,13 @@ export function DashboardPage() {
   // 담당자에게만 열려 있다 — 질문자면 호출 자체를 하지 않는다 (부르면 403).
   useEffect(() => {
     setUsage(null);
+    setUsageFailed(false);
     if (!activeProject || activeProject.role !== 'answerer') return;
     let cancelled = false;
     metricsApi
       .usage(activeProject.id)
       .then((u) => !cancelled && setUsage(u))
-      .catch(() => {});
+      .catch(() => !cancelled && setUsageFailed(true));
     return () => {
       cancelled = true;
     };
@@ -415,7 +423,9 @@ export function DashboardPage() {
               <p className="text-[12.5px] leading-[18.75px] text-[#62748e]">
                 {activeProject?.role === 'asker'
                   ? 'API 사용량은 담당자에게만 표시됩니다.'
-                  : '사용량을 불러오는 중…'}
+                  : usageFailed
+                    ? '사용량을 불러오지 못했습니다.'
+                    : '사용량을 불러오는 중…'}
               </p>
             ) : (
               <>
