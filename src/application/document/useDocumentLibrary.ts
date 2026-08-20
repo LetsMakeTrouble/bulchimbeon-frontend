@@ -18,6 +18,13 @@ export function useDocumentLibrary(projectId: string | undefined) {
   const [error, setError] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<DocumentDetail | null>(null);
+  /**
+   * 상세 조회 실패와 "아직 아무것도 안 골랐다"를 구분한다.
+   *
+   * 없으면 실패했을 때도 detail 이 null 이라 화면이 "문서를 선택하세요"를 띄운다 —
+   * 방금 문서를 누른 사람에게는 자기가 잘못 누른 것처럼 보이고, 재시도할 이유를 못 찾는다.
+   */
+  const [detailError, setDetailError] = useState(false);
   const [content, setContent] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [activateMessage, setActivateMessage] = useState<string | null>(null);
@@ -44,6 +51,7 @@ export function useDocumentLibrary(projectId: string | undefined) {
   const loadDetail = useCallback(
     (id: string) => {
       setContent(null);
+      setDetailError(false);
       repo
         .detail(id)
         .then(async (d) => {
@@ -56,7 +64,10 @@ export function useDocumentLibrary(projectId: string | undefined) {
         })
         // 실패 시 detail 을 그대로 두면 사이드바 선택은 새 문서인데 상세는 이전 문서로
         // 남는다 — 선택과 상세가 어긋난 채 보이는 것보다 빈 상태가 낫다.
-        .catch(() => setDetail(null));
+        .catch(() => {
+          setDetail(null);
+          setDetailError(true);
+        });
     },
     []
   );
@@ -95,6 +106,7 @@ export function useDocumentLibrary(projectId: string | undefined) {
     selectedId,
     select: setSelectedId,
     detail,
+    detailError,
     content,
     uploading,
     upload,
