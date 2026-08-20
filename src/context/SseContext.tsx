@@ -26,6 +26,7 @@ const STREAM_EVENTS = [
   'sync.completed',
   'sync.failed',
   'notification.created',
+  'message.created',
 ] as const;
 
 export type SseEvent = (typeof STREAM_EVENTS)[number];

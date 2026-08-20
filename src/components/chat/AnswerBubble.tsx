@@ -4,6 +4,7 @@ import { Badge } from '../ui/Badge';
 import { CitationBox } from '../inbox/CitationBox';
 import { formatTime } from '../../lib/format';
 import { cn } from '../../lib/cn';
+import { Avatar } from '../ui/Avatar';
 import { questionsApi } from '../../infrastructure/http/questions';
 import { buildFeedback, canGiveFeedback } from '../../domain/feedback/feedbackPolicy';
 import { FeedbackNotAllowedError } from '../../domain/errors';
@@ -239,12 +240,53 @@ function Row({
   );
 }
 
-export function QuestionBubble({ text, createdAt }: { text: string; createdAt: string }) {
+/**
+ * 사람 발화 말풍선 — 질문(§6)과 대화 메시지(§6.1)가 같은 모양을 쓴다.
+ *
+ * 좌우는 "내가 보냈는가"로 가른다. 담당자 화면에서는 질문자의 발화가 왼쪽에
+ * 발화자 이름과 함께 뜬다 — 목록 계약이 asked_by·sender 를 싣는 이유다.
+ */
+export function PersonBubble({
+  text,
+  createdAt,
+  mine,
+  senderName,
+  senderRole,
+}: {
+  text: string;
+  createdAt: string;
+  mine: boolean;
+  senderName?: string;
+  senderRole?: 'answerer' | 'asker';
+}) {
+  if (mine) {
+    return (
+      <div className="flex justify-end">
+        <div className="max-w-[560px] rounded-xl rounded-br-sm bg-brand-strong px-4 py-3">
+          <p className="whitespace-pre-wrap text-[14px] leading-[22px] text-white">{text}</p>
+          <p className="mt-1 text-right text-[11px] text-white/70">{formatTime(createdAt)}</p>
+        </div>
+      </div>
+    );
+  }
   return (
-    <div className="flex justify-end">
-      <div className="max-w-[560px] rounded-xl rounded-br-sm bg-brand-strong px-4 py-3">
-        <p className="whitespace-pre-wrap text-[14px] leading-[22px] text-white">{text}</p>
-        <p className="mt-1 text-right text-[11px] text-white/70">{formatTime(createdAt)}</p>
+    <div className="flex items-start gap-2.5">
+      {senderName && <Avatar name={senderName} size={32} className="mt-0.5 shrink-0" />}
+      <div className="max-w-[560px]">
+        {senderName && (
+          <p className="mb-1 flex items-center gap-1.5 text-[11px] font-bold text-ink-muted">
+            {senderName}
+            {senderRole && (
+              <span className="rounded-full border border-line px-1.5 py-px text-[10px] font-bold text-ink-subtle">
+                {senderRole === 'answerer' ? '담당자' : '질문자'}
+              </span>
+            )}
+          </p>
+        )}
+        <div className="rounded-xl rounded-tl-sm border border-line bg-surface px-4 py-3 shadow-[0_1px_2px_0_rgba(30,32,44,0.04)]">
+          <p className="whitespace-pre-wrap text-[14px] leading-[22px] text-ink">{text}</p>
+          <p className="mt-1 text-[11px] text-ink-muted">{formatTime(createdAt)}</p>
+        </div>
       </div>
     </div>
   );

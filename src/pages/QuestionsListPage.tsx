@@ -170,12 +170,18 @@ export function QuestionsListPage() {
                 >
                   <p className="text-[14px] font-bold leading-[20px] text-ink">{q.content_ko}</p>
                   <div className="mt-2.5 flex items-center gap-1.5">
-                    <QuestionStatusBadge status={q.status} grade={q.grade} state={q.state} />
+                    {/* 대화모드는 AI 파이프라인이 없다 — 상태 배지를 그대로 쓰면
+                        grade·state 가 null 이라 "확인 대기"로 잘못 읽힌다 */}
+                    {q.mode === 'conversation' ? (
+                      <Badge tone="neutral">대화</Badge>
+                    ) : (
+                      <QuestionStatusBadge status={q.status} grade={q.grade} state={q.state} />
+                    )}
                     {q.feedback_summary && q.feedback_summary.different > 0 && (
                       <Badge tone="purple">피드백 {q.feedback_summary.different}</Badge>
                     )}
                     <span className="ml-auto text-[11px] text-ink-muted">
-                      {formatRelative(q.created_at)}
+                      {q.asked_by.name} · {formatRelative(q.created_at)}
                     </span>
                   </div>
                 </button>
@@ -188,11 +194,15 @@ export function QuestionsListPage() {
         <div className="flex min-h-0 flex-col bg-surface">
           {detail && (
             <div className="flex shrink-0 items-center gap-2 border-b border-line px-5 py-3.5 shadow-[0_1px_2px_0_rgba(30,32,44,0.04)]">
-              <QuestionStatusBadge
-                status={detail.status}
-                grade={detail.answer?.grade ?? null}
-                state={detail.answer?.state}
-              />
+              {detail.mode === 'conversation' ? (
+                <Badge tone="neutral">대화</Badge>
+              ) : (
+                <QuestionStatusBadge
+                  status={detail.status}
+                  grade={detail.answer?.grade ?? null}
+                  state={detail.answer?.state}
+                />
+              )}
               {detail.urgency === 'urgent' && (
                 <Badge tone="danger" dot>
                   급함

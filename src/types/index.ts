@@ -189,6 +189,14 @@ export interface GithubIntegrationConfig {
 
 // ── §6 질문 / 답변 ─────────────────────────────────────────
 
+/** 대화모드(conversation)는 AI 파이프라인을 타지 않는다 — status 가 즉시 answered 다 */
+export type QuestionMode = 'question' | 'conversation';
+
+export interface AskedBy {
+  id: string;
+  name: string;
+}
+
 export interface Citation {
   id: string;
   chunk_id: string;
@@ -256,8 +264,9 @@ export interface QuestionDetail {
   content_ko: string;
   content_en: string | null;
   urgency: Urgency;
+  mode: QuestionMode;
   status: QuestionStatus;
-  asked_by: { id: string; name: string };
+  asked_by: AskedBy;
   answer: Answer | null;
   similar_official_qa?: {
     id: string;
@@ -273,6 +282,9 @@ export interface QuestionDetail {
 export interface QuestionListItem {
   id: string;
   content_ko: string;
+  /** 담당자의 전체 목록에서 행 단위로 질문자를 구분한다 — 상세의 asked_by 와 동일 shape */
+  asked_by: AskedBy;
+  mode: QuestionMode;
   status: QuestionStatus;
   grade: Grade | null;
   matching_rate: number | null;
@@ -284,7 +296,26 @@ export interface QuestionListItem {
 export interface AskQuestionResponse {
   question_id: string;
   status: QuestionStatus;
+  mode: QuestionMode;
+  /** 202 접수 시점 값이라 항상 false — 파이프라인이 채운 값은 이후 상세에 실린다 */
   suggest_urgent: boolean;
+  created_at: string;
+}
+
+// ── §6.1 대화 메시지 — 사람 간 양방향 채널 (멤버 전원) ─────
+
+/** role 은 이 프로젝트에서의 project_members.role — 말풍선 좌우·배지를 가른다 */
+export interface MessageSender {
+  id: string;
+  name: string;
+  role: Role;
+}
+
+/** GET/POST /projects/{id}/messages. AI 답변·알림·브리핑이 붙지 않는다 */
+export interface ConversationMessage {
+  id: string;
+  content: string;
+  sender: MessageSender;
   created_at: string;
 }
 
