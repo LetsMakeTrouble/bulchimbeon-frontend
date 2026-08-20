@@ -189,6 +189,15 @@ export interface GithubIntegrationConfig {
 
 // ── §6 질문 / 답변 ─────────────────────────────────────────
 
+/**
+ * 같은 엔드포인트가 두 가지 발화를 받는다.
+ *  - question     — 기존 AI 답변 파이프라인을 탄다
+ *  - conversation — 파이프라인을 타지 않는 사람 간 대화. status 는 즉시 answered,
+ *                   answer·content_en 은 항상 null, answer.completed SSE 가 오지 않는다.
+ * 요청에서 생략하면 question 이다(하위 호환).
+ */
+export type QuestionMode = 'question' | 'conversation';
+
 export interface Citation {
   id: string;
   chunk_id: string;
@@ -254,9 +263,11 @@ export interface FailureInfo {
 export interface QuestionDetail {
   id: string;
   content_ko: string;
+  /** conversation 이면 번역하지 않으므로 항상 null */
   content_en: string | null;
   urgency: Urgency;
   status: QuestionStatus;
+  mode: QuestionMode;
   asked_by: { id: string; name: string };
   answer: Answer | null;
   similar_official_qa?: {
@@ -273,6 +284,12 @@ export interface QuestionDetail {
 export interface QuestionListItem {
   id: string;
   content_ko: string;
+  mode: QuestionMode;
+  /**
+   * 발화자. 담당자 목록에서 상세 호출 없이 질문자를 구분하려고 추가됐다.
+   * ⚠️ role 이 없다 — 이 사람이 담당자인지 질문자인지는 payload 로 알 수 없다.
+   */
+  asked_by: { id: string; name: string };
   status: QuestionStatus;
   grade: Grade | null;
   matching_rate: number | null;
@@ -284,6 +301,7 @@ export interface QuestionListItem {
 export interface AskQuestionResponse {
   question_id: string;
   status: QuestionStatus;
+  mode: QuestionMode;
   suggest_urgent: boolean;
   created_at: string;
 }
@@ -294,6 +312,22 @@ export interface FeedbackResponse {
   message: string;
   feedback_summary: FeedbackSummary;
   recommend_approve: boolean;
+}
+
+// ── §6.1 프로젝트 대화 채널 ─────────────────────────────────
+
+/**
+ * 멤버면 역할 무관하게 읽고 쓰는 대화 메시지.
+ *
+ * 질문(`POST /questions`)은 mode 와 **무관하게** `require_asker` 가 걸려 담당자가 못 쓴다.
+ * 그래서 담당자가 발화할 수 있는 채널이 따로 있다 — 이 리소스의 존재 이유다.
+ * 질문과 달리 발화자 role 이 본문에 들어 있어 화면이 추측할 필요가 없다.
+ */
+export interface ConversationMessage {
+  id: string;
+  content: string;
+  sender: { id: string; name: string; role: Role };
+  created_at: string;
 }
 
 // ── §7 확인 카드 큐 ────────────────────────────────────────

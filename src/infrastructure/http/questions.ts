@@ -5,6 +5,7 @@ import type {
   Paginated,
   QuestionDetail,
   QuestionListItem,
+  QuestionMode,
   Urgency,
 } from '../../types';
 import type { Feedback } from '../../domain/feedback/feedbackPolicy';
@@ -20,11 +21,23 @@ export const questionsApi = {
       params: { limit: 20, offset: 0, ...params },
     }),
 
-  /** asker 전용. 담당자가 호출하면 403 FORBIDDEN_ROLE (D17) */
-  ask: (projectId: string, contentKo: string, urgency: Urgency = 'normal') =>
+  /**
+   * 질문과 대화가 같은 엔드포인트를 쓴다.
+   *
+   * D17 은 원래 "담당자가 호출하면 403 FORBIDDEN_ROLE" 이었다. mode="conversation" 에도
+   * 그 제한이 그대로 걸리는지는 **명세에 적혀 있지 않다**. 걸린다면 담당자는 대화도 못 보내고
+   * 양방향 채팅이 성립하지 않는다 — 화면은 403 을 삼키지 말고 그대로 사용자에게 보여준다.
+   */
+  ask: (
+    projectId: string,
+    contentKo: string,
+    urgency: Urgency = 'normal',
+    mode: QuestionMode = 'question'
+  ) =>
     http.post<AskQuestionResponse>(`/projects/${projectId}/questions`, {
       content_ko: contentKo,
       urgency,
+      mode,
     }),
 
   detail: (questionId: string) => http.get<QuestionDetail>(`/questions/${questionId}`),
